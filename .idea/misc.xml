@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.12 (PyCharmMiscProject)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (PyCharmMiscProject)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.12.3 (sftp://dev@10.211.55.33:22/home/dev/.virtualenvs/linux-process-security-lab/bin/python) (2)" project-jdk-type="Python SDK" />
 </project>
