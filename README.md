@@ -1,5 +1,3 @@
----
-
 # Lab Overview
 
 ## 01 – Process Isolation
