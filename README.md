@@ -34,6 +34,19 @@ Linux Discretionary Access Control (DAC).
 
 Improper file permissions allow processes to tamper with each other's data.
 
+| Resource              | DAC Modell      |
+| --------------------- | --------------- |
+| Files                 | ✔ vollständig   |
+| Directories           | ✔ vollständig   |
+| Unix sockets          | ✔ vollständig   |
+| Named pipes           | ✔ vollständig   |
+| Shared memory (POSIX) | ✔ vollständig   |
+| Shared memory (SysV)  | ✔ ähnlich       |
+| Processes             | ✔ teilweise     |
+| Signals               | ✔ teilweise     |
+| /proc                 | ✔ teilweise     |
+| TCP sockets           | ✖ eher indirekt |
+
 ---
 
 ## 03 – TCP Socket Ownership

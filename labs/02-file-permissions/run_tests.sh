@@ -8,3 +8,6 @@ sudo -u third_party python3 /tmp/file_access_tester.py
 
 
 
+# Copy the results to home
+sudo mv /tmp/*.json /home/dev
+sudo chown dev:dev /home/dev/*.json

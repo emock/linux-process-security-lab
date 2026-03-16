@@ -1,4 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+import getpass
+import json
 
 
 path = ['/tmp/lab-02-s1-open/',
@@ -6,20 +8,23 @@ path = ['/tmp/lab-02-s1-open/',
         '/tmp/lab-02-s3-owner-only/']
 
 
-files = ['config1.json',
-         'config2.json',
-         'config3.json']
+files = ['config1_open.json',
+         'config2_group.json',
+         'config3_owner.json']
 
 
 @dataclass
-class Result:
-    read: bool
-    # write: bool
-    # rename: bool
-    # delete: bool
+class AccessRecord:
+    user: str
+    file: str
+    operation: str
+    allowed: bool
 
 
-results = {}
+records: list[AccessRecord] = []
+
+
+current_user = getpass.getuser()
 
 
 #                               DEV     component       thirdparty
@@ -35,21 +40,21 @@ for p in path:
 
         try:
             with open(file, "r") as f:
-                # print ("READ")
-                read_result = Result(read=True)
-
+                records.append(AccessRecord(user=current_user, file=file, operation='read', allowed=True))
         except PermissionError:
-            # print ("Permission denied")
-            read_result = Result(read=False)
+            records.append(AccessRecord(user=current_user, file=file, operation='read', allowed=False))
 
-        results[file] = read_result
+# terminal output
+print(f"{'USER':15} {'FILE':60} {'OP':8} RESULT")
+print("-" * 100)
+for r in records:
+    result = "R" if r.allowed else "N"
+    print(f"{r.user:15} {r.file:60} {r.operation:8} {result}")
 
 
-# print (results)
+report_file = current_user+"_read.json"
+# optional JSON export
+with open("/tmp/"+report_file, "w", encoding="utf-8") as f:
+    json.dump([asdict(r) for r in records], f, indent=2)
 
-print(f"{'FILE':40} READ")
-print("-" * 50)
 
-for file, result in results.items():
-    status = "R" if result.read else "N"
-    print(f"{file:40} {status}")

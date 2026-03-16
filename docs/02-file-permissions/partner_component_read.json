@@ -1,0 +1,56 @@
+[
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s1-open/config1_open.json",
+    "operation": "read",
+    "allowed": true
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s1-open/config2_group.json",
+    "operation": "read",
+    "allowed": true
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s1-open/config3_owner.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s2-group-access/config1_open.json",
+    "operation": "read",
+    "allowed": true
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s2-group-access/config2_group.json",
+    "operation": "read",
+    "allowed": true
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s2-group-access/config3_owner.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s3-owner-only/config1_open.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s3-owner-only/config2_group.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "partner_component",
+    "file": "/tmp/lab-02-s3-owner-only/config3_owner.json",
+    "operation": "read",
+    "allowed": false
+  }
+]
