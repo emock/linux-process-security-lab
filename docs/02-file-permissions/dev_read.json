@@ -1,55 +1,64 @@
 [
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s1-open/config1_open.json",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config1_open.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s1-open/config2_group.json",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config2_group.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s1-open/config3_owner.json",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config3_owner.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s2-group-access/config1_open.json",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config1_open.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s2-group-access/config2_group.json",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config2_group.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s2-group-access/config3_owner.json",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config3_owner.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s3-owner-only/config1_open.json",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config1_open.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s3-owner-only/config2_group.json",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config2_group.json",
     "operation": "read",
     "allowed": true
   },
   {
     "user": "dev",
-    "file": "/tmp/lab-02-s3-owner-only/config3_owner.json",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config3_owner.json",
     "operation": "read",
     "allowed": true
   }

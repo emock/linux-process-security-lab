@@ -1,0 +1,128 @@
+[
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config1_open.json",
+    "operation": "read",
+    "allowed": true
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config2_group.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config3_owner.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config1_open.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config2_group.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config3_owner.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config1_open.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config2_group.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config3_owner.json",
+    "operation": "read",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config1_open.json",
+    "operation": "write",
+    "allowed": true
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config2_group.json",
+    "operation": "write",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s1-open/",
+    "file": "config3_owner.json",
+    "operation": "write",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config1_open.json",
+    "operation": "write",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config2_group.json",
+    "operation": "write",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s2-group-access/",
+    "file": "config3_owner.json",
+    "operation": "write",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config1_open.json",
+    "operation": "write",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config2_group.json",
+    "operation": "write",
+    "allowed": false
+  },
+  {
+    "user": "third_party",
+    "scenario": "/tmp/lab-02-s3-owner-only/",
+    "file": "config3_owner.json",
+    "operation": "write",
+    "allowed": false
+  }
+]

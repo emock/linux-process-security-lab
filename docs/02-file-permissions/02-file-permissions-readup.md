@@ -1,22 +1,28 @@
 # Permissions
 
-## Read Permissions
 
-| Scenario | File  | dev | partner | third_party |
-|----------|-------|-----|---------|-------------|
-| s1 open  | open  | R   | R       | R           |
-| s1 open  | group | R   | R       | N           |
-| s1 open  | owner | R   | N       | N           |
-| s2 group | open  | R   | R       | N           |
-| s2 group | group | R   | R       | N           |
-| s2 group | owner | R   | N       | N           |
-| s3 owner | open  | R   | N       | N           |
-| s3 owner | group | R   | N       | N           |
-| s3 owner | owner | R   | N       | N           |
+## Overview of Read and Write Permissions
+
+| Scenario                     | File               | dev   | partner   | third_party   |
+|:-----------------------------|:-------------------|:------|:----------|:--------------|
+| /tmp/lab-02-s1-open/         | config1_open.json  | X     | X         | X             |
+| /tmp/lab-02-s1-open/         | config2_group.json | X     | X         | N             |
+| /tmp/lab-02-s1-open/         | config3_owner.json | X     | N         | N             |
+| /tmp/lab-02-s2-group-access/ | config1_open.json  | X     | X         | N             |
+| /tmp/lab-02-s2-group-access/ | config2_group.json | X     | X         | N             |
+| /tmp/lab-02-s2-group-access/ | config3_owner.json | X     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config1_open.json  | X     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config2_group.json | X     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config3_owner.json | X     | N         | N             |
+
+X meaning: Read and Write is possible
+
+
+
 
 ---
 
-# Permission Checks During `open()`
+## Permission Checks During `open()`
 
 If a process tries to open a file (using `open()`), the kernel checks two things:
 
@@ -40,7 +46,7 @@ Reading will still work.
 
 ---
 
-# 1. Directory Traversal
+### 1. Directory Traversal
 
 The process needs to have **execute (`x`) permissions on all intermediate directories**, for example:
 
@@ -55,7 +61,7 @@ This allows the process to **traverse the directory**.
 
 If the process does not have execute permissions on a directory, it cannot reach the file — even if the file itself has permissions such as `777`.
 
-### Example
+#### Example
 
 User `third_party` cannot access:
 
@@ -86,7 +92,7 @@ although the file permissions themselves would allow access.
 
 ---
 
-# 2. File Permissions
+### 2. File Permissions
 
 If the path is reachable, the kernel checks **file permissions**.
 
@@ -122,7 +128,7 @@ The permission classes are **mutually exclusive** and not **additive**
 
 ---
 
-# Technical Background
+## Technical Background
 
 When a process opens a file, the following steps are executed internally:
 
@@ -146,7 +152,7 @@ The permission bits (`rwx`) are stored inside **`i_mode`**.
 
 ---
 
-# Implications of Directory Permission Bits
+### Implications of Directory Permission Bits
 
 For directories, the permission bits have slightly different meanings:
 
@@ -158,7 +164,7 @@ For directories, the permission bits have slightly different meanings:
 
 ---
 
-# Case: `r` Without `x`
+#### Case: `r` Without `x`
 
 If a directory only has **read permissions** set:
 
@@ -185,7 +191,7 @@ because the execute bit is missing.
 
 ---
 
-# Case: `x` Without `r`
+#### Case: `x` Without `r`
 
 If a directory only has **execute permissions** set:
 
@@ -212,7 +218,7 @@ because read permissions are missing.
 
 ---
 
-# Important Takeaways
+## Important Takeaways
 
 * File permissions are irrelevant if the directory is not accessible for a process.
 * Directory permissions control **path traversal**, while file permissions control **data access**.
@@ -226,3 +232,33 @@ because read permissions are missing.
 
 [] This behavior will be explored in the next exercise.
 
+
+
+---
+
+## Detailed Results
+
+
+| Scenario                     | File               | dev   | partner   | third_party   |
+|:-----------------------------|:-------------------|:------|:----------|:--------------|
+| /tmp/lab-02-s1-open/         | config1_open.json  | R     | R         | R             |
+| /tmp/lab-02-s1-open/         | config2_group.json | R     | R         | N             |
+| /tmp/lab-02-s1-open/         | config3_owner.json | R     | N         | N             |
+| /tmp/lab-02-s2-group-access/ | config1_open.json  | R     | R         | N             |
+| /tmp/lab-02-s2-group-access/ | config2_group.json | R     | R         | N             |
+| /tmp/lab-02-s2-group-access/ | config3_owner.json | R     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config1_open.json  | R     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config2_group.json | R     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config3_owner.json | R     | N         | N             |
+
+| Scenario                     | File               | dev   | partner   | third_party   |
+|:-----------------------------|:-------------------|:------|:----------|:--------------|
+| /tmp/lab-02-s1-open/         | config1_open.json  | W     | W         | W             |
+| /tmp/lab-02-s1-open/         | config2_group.json | W     | W         | N             |
+| /tmp/lab-02-s1-open/         | config3_owner.json | W     | N         | N             |
+| /tmp/lab-02-s2-group-access/ | config1_open.json  | W     | W         | N             |
+| /tmp/lab-02-s2-group-access/ | config2_group.json | W     | W         | N             |
+| /tmp/lab-02-s2-group-access/ | config3_owner.json | W     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config1_open.json  | W     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config2_group.json | W     | N         | N             |
+| /tmp/lab-02-s3-owner-only/   | config3_owner.json | W     | N         | N             |
