@@ -60,6 +60,7 @@ groups third_party
 #############################
 
 cp "$SCRIPT_DIR/file_access_tester.py" "/tmp/"
+cp "$SCRIPT_DIR/common.py" "/tmp/"
 
 
 

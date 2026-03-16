@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict
 import getpass
 import json
+from common import write_records, AccessRecord
 
 
 path = ['/tmp/lab-02-s1-open/',
@@ -11,16 +12,6 @@ path = ['/tmp/lab-02-s1-open/',
 files = ['config1_open.json',
          'config2_group.json',
          'config3_owner.json']
-
-
-@dataclass
-class AccessRecord:
-    user: str
-    scenario: str
-    file: str
-    operation: str
-    allowed: bool
-
 
 records: list[AccessRecord] = []
 
@@ -37,8 +28,6 @@ def test_access(operation:str):
 
     otag = op_map[operation]
 
-
-
     for p in path:
         for filename in files:
 
@@ -52,11 +41,8 @@ def test_access(operation:str):
 
 
     report_file = current_user +"_"+ otag +".json"
-    # optional JSON export
-    with open("/tmp/" + report_file, "w", encoding="utf-8") as f:
-        json.dump([asdict(r) for r in records], f, indent=2)
 
-
+    write_records("/tmp/", report_file, records)
 
 
 
