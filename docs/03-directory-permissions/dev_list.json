@@ -1,0 +1,44 @@
+[
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s1-700/",
+    "file": "/tmp/lab-03-s1-700/config.json",
+    "operation": "list",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s2-500/",
+    "file": "/tmp/lab-03-s2-500/config.json",
+    "operation": "list",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s3-300/",
+    "file": "/tmp/lab-03-s3-300/config.json",
+    "operation": "list",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s4-200/",
+    "file": "/tmp/lab-03-s4-200/config.json",
+    "operation": "list",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s5-100/",
+    "file": "/tmp/lab-03-s5-100/config.json",
+    "operation": "list",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s6-000/",
+    "file": "/tmp/lab-03-s6-000/config.json",
+    "operation": "list",
+    "allowed": false
+  }
+]

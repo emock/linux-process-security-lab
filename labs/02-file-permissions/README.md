@@ -1,6 +1,3 @@
- 
----
-
 1. Make files executable: 
 ```
    chmod a+x setup.sh
