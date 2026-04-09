@@ -1,0 +1,58 @@
+signal time=1775722671.364213 sender=org.freedesktop.DBus -> destination=:1.281 serial=2 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameAcquired
+   string ":1.281"
+signal time=1775722694.163030 sender=:1.227 -> destination=(null destination) serial=218 path=/org/freedesktop/UPower/devices/battery_BAT0; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged
+   string "org.freedesktop.UPower.Device"
+   array [
+      dict entry(
+         string "UpdateTime"
+         variant             uint64 1775722694
+      )
+      dict entry(
+         string "TimeToEmpty"
+         variant             int64 781508
+      )
+      dict entry(
+         string "EnergyRate"
+         variant             double 0.35
+      )
+      dict entry(
+         string "Voltage"
+         variant             double 12.095
+      )
+   ]
+   array [
+   ]
+signal time=1775722694.163349 sender=:1.227 -> destination=(null destination) serial=219 path=/org/freedesktop/UPower/devices/DisplayDevice; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged
+   string "org.freedesktop.UPower.Device"
+   array [
+      dict entry(
+         string "UpdateTime"
+         variant             uint64 1775722694
+      )
+      dict entry(
+         string "TimeToEmpty"
+         variant             int64 781508
+      )
+      dict entry(
+         string "EnergyRate"
+         variant             double 0.35
+      )
+   ]
+   array [
+   ]
+signal time=1775722702.656383 sender=org.freedesktop.DBus -> destination=(null destination) serial=316 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
+   string ":1.282"
+   string ""
+   string ":1.282"
+signal time=1775722708.090243 sender=org.freedesktop.DBus -> destination=(null destination) serial=317 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
+   string ":1.283"
+   string ""
+   string ":1.283"
+signal time=1775722708.100702 sender=org.freedesktop.DBus -> destination=(null destination) serial=318 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
+   string ":1.283"
+   string ":1.283"
+   string ""
+signal time=1775722714.404157 sender=org.freedesktop.DBus -> destination=(null destination) serial=319 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
+   string ":1.282"
+   string ":1.282"
+   string ""
