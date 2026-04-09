@@ -1,5 +1,21 @@
 # DBUS
 
+## Result
+
+| Scenario         | /etc/dbus-1/system.d      \<allow/\> Primitives | dev | partner | third_party |
+|:-----------------|:------------------------------------------------|:----|:--------|:------------|
+| Connect          | none (socket reachable)                         | X   | X       | X           |
+| Listening        | eavesdrop="true"                                | X   | X       | N           |
+| Own service name | own="com.custom.logger"                         | X   | N       | N           |
+| Send method call | send_destination="com.custom.logger"            | X   | N       | N           |
+
+
+
+
+
+
+
+
 ## Technical Background
 
 The system bus is typically exposed via the Unix Domain Socket:
@@ -11,9 +27,45 @@ The system bus is typically exposed via the Unix Domain Socket:
 
 
 
-Sequence
+## Sequence
+
+Service perspective:
 
 1. Connect to the Bus
+2. Export a service 
+
+
+
+Client perspective
+1. Connect to the bus
+2. Send a message
+
+
+
+## Security Policies
+
+Define Policies for Unix users and groups
+
+Deny by default
+
+
+
+Wenn du keine send-Rechte hast:
+
+👉 kannst du NICHT:
+
+Methoden aufrufen
+Introspect machen
+Properties lesen
+
+👉 aber kannst oft:
+
+sehen, dass der Service existiert
+gewisse Signals beobachten
+
+
+
+
 
 
 ## Useful commands
@@ -29,6 +81,14 @@ Messages being sent on the bus can be inspected using:
 ```angular2html
 dbus-monitor --system
 ```
+
+
+Sending messages
+
+dev@dev:~$ gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method
+com.custom.logger.vSendMessage 42
+
+
 
 ## Connecting to DBUS
 
@@ -269,3 +329,161 @@ Well-known name übernehmen
 Service-Impersonation
 confused deputy
 Trust in sender name statt in UID
+
+
+
+
+## Binding a name
+
+
+We define a very simple Service called Logger.
+This service just offers one method which takes an integer as input
+and prints it to command line.
+
+
+
+class Logger(ServiceInterface):
+def __init__(self):
+super().__init__('com.custom.Logger')
+
+@method()
+def vSendMessage(self, number: 'i'):
+print(f"[SERVICE] vSendMessage received: {number}")
+
+In order to make the service available to DBUS we need to
+export the service to DBUS.
+Without an export these are just local python methods which 
+are not available on DBUS.
+
+```
+service = Logger()
+bus.export('/com/custom/logger', service)
+await bus.request_name('com.custom.Logger')
+```
+
+This is not allowed by default and we encounter an error:
+
+dbus_next.errors.DBusError: Connection ":1.1" is not allowed to own the service "com.custom.Logger" due to security
+policies in the configuration file
+
+
+In Order to allow such a binding we need to define 
+a policy in
+/etc/dbus-1/system.d
+
+This can only be done by root.
+
+Damit erlaubst du erstmal nur:
+
+own von com.custom.Logger
+
+Das heißt noch nicht automatisch, dass andere alles dorthin senden dürfen.
+Dafür gibt es separate send_destination, receive, eavesdrop usw.
+
+
+
+This is what we will test next:
+
+When calling the service via
+
+dev@dev:~$ gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method
+com.custom.logger.vsendMessage 42
+
+we receive:
+
+Error: GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: Rejected send message, 1 matched rules; type="method_call",
+sender=":1.4" (uid=1000 pid=34193 comm="gdbus call --system --dest com.custom.logger --obj" label="unconfined")
+interface="com.custom.logger" member="vsendMessage" error name="(unset)" requested_reply="0" destination="
+com.custom.logger" (uid=1000 pid=34192 comm="/home/dev/.virtualenvs/linux-process-security-lab/" label="unconfined")
+
+This can be remedied by updating the policy file with the statement:
+
+  <policy user="dev">
+    <allow send_destination="com.custom.logger"/>
+  </policy>
+
+
+Now with the interface being available on the bus and the policy updated, lets send again:
+
+The Listener receives the value:
+
+```
+/home/dev/.virtualenvs/linux-process-security-lab/bin/python
+/home/dev/linux-process-security-lab/labs/05-dbus/dbus_listener.py
+Connected to system bus
+[SERVICE] vSendMessage received: 42
+
+```
+
+
+Adding this policy also allows us to introspect the service and get the method signatures.
+
+
+``` 
+node /com/custom/logger {
+  interface org.freedesktop.DBus.Introspectable {
+    methods:
+      Introspect(out s data);
+    signals:
+    properties:
+  };
+  interface org.freedesktop.DBus.Peer {
+    methods:
+      GetMachineId(out s machine_uuid);
+      Ping();
+    signals:
+    properties:
+  };
+  interface org.freedesktop.DBus.Properties {
+    methods:
+      Get(in  s interface_name,
+          in  s property_name,
+          out v value);
+      Set(in  s interface_name,
+          in  s property_name,
+          in  v value);
+      GetAll(in  s interface_name,
+             out a{sv} props);
+    signals:
+      PropertiesChanged(s interface_name,
+                        a{sv} changed_properties,
+                        as invalidated_properties);
+    properties:
+  };
+  interface org.freedesktop.DBus.ObjectManager {
+    methods:
+      GetManagedObjects(out a{oa{sa{sv}}} objpath_interfaces_and_properties);
+    signals:
+      InterfacesAdded(o object_path,
+                      a{sa{sv}} interfaces_and_properties);
+      InterfacesRemoved(o object_path,
+                        as interfaces);
+    properties:
+  };
+  interface com.custom.logger {
+    methods:
+      vSendMessage(in  i number);
+    signals:
+    properties:
+  };
+};
+
+
+
+```
+
+
+Cross Check:
+
+dev@dev:~$ sudo -u nobody gdbus introspect --system --dest com.custom.logger --object-path /com/custom/logger > ~
+/introspect.log
+Error: GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: Rejected send message, 1 matched rules; type="method_call",
+sender=":1.16" (uid=65534 pid=34362 comm="gdbus introspect --system --dest com.custom.logger" label="unconfined")
+interface="org.freedesktop.DBus.Introspectable" member="Introspect" error name="(unset)" requested_reply="0"
+destination="com.custom.logger" (uid=1000 pid=34290 comm="/home/dev/.virtualenvs/linux-process-security-lab/" label="
+unconfined")
+
+
+@TODO Implement this as a scenario!
+
+

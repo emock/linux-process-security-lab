@@ -1,16 +1,39 @@
 from dbus_next.aio import MessageBus
 from dbus_next.constants import BusType
 import asyncio
+from dbus_next.service import ServiceInterface, method
+
+
+class Logger(ServiceInterface):
+    def __init__(self):
+        super().__init__('com.custom.logger')
+
+    @method()
+    def vSendMessage(self, number: 'i'):
+        print(f"[SERVICE] vSendMessage received: {number}")
+
 
 async def main():
 
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
     print ("Connected to system bus")
 
+    service = Logger()
+
+    bus.export('/com/custom/logger', service)
+
+    await bus.request_name('com.custom.logger')
+
+
     await asyncio.get_running_loop().create_future()
+
+
+
 
 if __name__ == '__main__':
     asyncio.run(main())
+
+
 
 
 

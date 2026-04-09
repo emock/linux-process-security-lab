@@ -1,0 +1,47 @@
+node /com/custom/logger {
+  interface org.freedesktop.DBus.Introspectable {
+    methods:
+      Introspect(out s data);
+    signals:
+    properties:
+  };
+  interface org.freedesktop.DBus.Peer {
+    methods:
+      GetMachineId(out s machine_uuid);
+      Ping();
+    signals:
+    properties:
+  };
+  interface org.freedesktop.DBus.Properties {
+    methods:
+      Get(in  s interface_name,
+          in  s property_name,
+          out v value);
+      Set(in  s interface_name,
+          in  s property_name,
+          in  v value);
+      GetAll(in  s interface_name,
+             out a{sv} props);
+    signals:
+      PropertiesChanged(s interface_name,
+                        a{sv} changed_properties,
+                        as invalidated_properties);
+    properties:
+  };
+  interface org.freedesktop.DBus.ObjectManager {
+    methods:
+      GetManagedObjects(out a{oa{sa{sv}}} objpath_interfaces_and_properties);
+    signals:
+      InterfacesAdded(o object_path,
+                      a{sa{sv}} interfaces_and_properties);
+      InterfacesRemoved(o object_path,
+                        as interfaces);
+    properties:
+  };
+  interface com.custom.logger {
+    methods:
+      vSendMessage(in  i number);
+    signals:
+    properties:
+  };
+};

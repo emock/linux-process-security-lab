@@ -26,3 +26,34 @@ then restart the system bus
 sudo systemctl restart dbus
 
 and observe again.
+
+
+
+
+## Binding a service name
+
+Copy com.custom.logger.conf 
+
+to /etc/dbus-1/system.d
+
+then run
+
+sudo systemctl restart dbus
+
+The service VsendMessage is now available on dbus.
+
+send a message to the SErvice:
+
+gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method com.custom.logger.vsendMessage 42
+
+
+Observe the result
+
+
+Update the policy file
+
+
+
+
+
+
