@@ -55,5 +55,21 @@ Update the policy file
 
 
 
+Observing communication
+
+
+Start the listener
+start the client
+
+
+Then start a terminal as Root
+sudo dbus-monitor --system
+
+This will show the traffic
+
+
+
+
+
 
 

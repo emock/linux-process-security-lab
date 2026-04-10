@@ -9,8 +9,8 @@ class Logger(ServiceInterface):
         super().__init__('com.custom.logger')
 
     @method()
-    def vSendMessage(self, number: 'i'):
-        print(f"[SERVICE] vSendMessage received: {number}")
+    def vSendMessage(self, number: 'i', text: 's', flag: 'b'):
+        print(f"[SERVICE] vSendMessage received: {number} {text} {flag}")
 
 
 async def main():

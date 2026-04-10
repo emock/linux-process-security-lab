@@ -487,3 +487,99 @@ unconfined")
 @TODO Implement this as a scenario!
 
 
+
+
+
+Observing Traffic
+
+Der entscheidende Punkt ist:
+
+dbus-monitor als normaler User auf dem System Bus sieht fremde Unicast-Method-Calls nicht automatisch, auch dann nicht,
+wenn du theoretisch eavesdrop="true" gesetzt hast.
+Die D-Bus-Spezifikation beschreibt BecomeMonitor sogar als den bevorzugten Weg zum Monitoring; klassisches Eavesdropping
+ist eher ein älterer Mechanismus für Debugging-Tools.
+
+Das erklärt genau dein DEV-Verhalten:
+
+dev startet den Service
+dev startet den Client
+dev startet dbus-monitor
+trotzdem sieht dbus-monitor die Method Calls nicht
+
+Denn aus Sicht des Busses sind das drei verschiedene Connections, und der Monitor ist nur ein dritter, unbeteiligter
+Client. Die dbus-monitor-Manpage sagt ausdrücklich, dass die Bus-Konfiguration verhindern kann, dass dbus-monitor alle
+Nachrichten sieht, insbesondere als Nicht-Root-User.
+
+Dass Root alles sieht, passt ebenfalls: Das ist praktisch der privilegierte Monitoring-Fall. Die D-Bus-Spezifikation
+nennt BecomeMonitor als den besseren Monitoring-Mechanismus, und in der Praxis laufen solche vollständigen
+Bus-Mitschnitte typischerweise nur privilegiert.
+
+Kurz gesagt: Nein — nur receive reicht nicht. Und selbst mit eavesdrop wirst du auf dem System Bus als normaler User in
+der Praxis meist trotzdem nichts sehen.
+
+Ich räume das einmal sauber auf, weil hier mehrere Ebenen zusammenkommen:
+
+🧠 TL;DR
+
+❌ receive ⇒ kein Mithören
+❌ receive + eavesdrop ⇒ theoretisch ja, praktisch oft nein (System Bus)
+✔ echtes Mithören ⇒ Monitor Mode (root)
+
+🔍 1. Deine konkrete Frage
+
+Wenn ich receive hinzufüge → sehe ich dann Traffic?
+
+👉 Nein
+
+Warum:
+
+receive = Nachrichten, die an dich gehen
+
+Du bist aber:
+
+Monitor ≠ Ziel der Nachricht
+🔥 2. Was du eigentlich brauchst
+
+Für echtes Mithören:
+
+<allow eavesdrop="true"/>
+
+👉 das ist der richtige Mechanismus
+
+⚠️ 3. Warum es trotzdem nicht funktioniert
+
+Das ist der entscheidende Punkt:
+
+❗ Auf dem System Bus wird Eavesdropping in der Praxis stark eingeschränkt
+
+Gründe (realistisch):
+
+1. Moderne Implementierung (dbus-daemon / dbus-broker)
+   eavesdrop wird kaum noch effektiv genutzt
+   Monitoring läuft über:
+   BecomeMonitor
+2. dbus-monitor Verhalten
+
+Als normaler User:
+
+→ nutzt Match Rules (AddMatch)
+→ KEIN echter Monitor Mode
+
+3. System Bus Design
+
+Der System Bus ist:
+
+„locked down“
+
+→ absichtlich
+
+🧠 4. Warum root funktioniert
+sudo dbus-monitor --system
+
+👉 nutzt:
+
+Monitor Connection (privileged)
+
+→ sieht alles
+
+→ ignoriert eavesdrop
