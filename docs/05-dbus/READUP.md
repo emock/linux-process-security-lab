@@ -5,15 +5,9 @@
 | Scenario         | /etc/dbus-1/system.d      \<allow/\> Primitives | dev | partner | third_party |
 |:-----------------|:------------------------------------------------|:----|:--------|:------------|
 | Connect          | none (socket reachable)                         | X   | X       | X           |
-| Listening        | eavesdrop="true"                                | X   | X       | N           |
+| Listening        |                                                 | X   | X       | N           |
 | Own service name | own="com.custom.logger"                         | X   | N       | N           |
 | Send method call | send_destination="com.custom.logger"            | X   | N       | N           |
-
-
-
-
-
-
 
 
 ## Technical Background
@@ -22,12 +16,27 @@ The system bus is typically exposed via the Unix Domain Socket:
 /run/dbus/system_bus_socket (/var/run/dbus/system_bus_socket is often a symlink)
 
 
+While the name DBUS indicates an open bus, the messages on the bus are more like Unicasts and only the receiver 
+can access those.
+
+A User will get all access rights for the corresponding user and groups he is a member of.
+That is:
+
+user dev will get permissions of
+
+User: dev
+Group: dev
+Group: shared_group
+
+User:Partner_component
+Group: partner_component
+Group: shared_group
 
 
 
 
 
-## Sequence
+### Sequence
 
 Service perspective:
 
@@ -42,57 +51,30 @@ Client perspective
 
 
 
-## Security Policies
-
-Define Policies for Unix users and groups
-
-Deny by default
-
-
-
-Wenn du keine send-Rechte hast:
-
-👉 kannst du NICHT:
-
-Methoden aufrufen
-Introspect machen
-Properties lesen
-
-👉 aber kannst oft:
-
-sehen, dass der Service existiert
-gewisse Signals beobachten
 
 
 
 
+----
 
 
 ## Useful commands
 
-DBUS participants can be inspected using
-
-```
-busctl --system list
-```
-
-Messages being sent on the bus can be inspected using:
-
-```angular2html
-dbus-monitor --system
-```
-
-
-Sending messages
-
-dev@dev:~$ gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method
-com.custom.logger.vSendMessage 42
+| Command                                        | Note |      
+|:-----------------------------------------------|:------------------------------------------------|
+| busctl --system list                           | Show current bus participants |
+| bus-monitor --system \| tee ~/dbus_monitor.log |  to log the current traffic 
+| dbus-monitor --system                               | Messages being sent on the bus can be inspected using:                         | 
+|Sending messages | dbus call --system --dest com.custom.logger --object-path /com/custom/logger --method
+com.custom.logger.vSendMessage 42 | 
 
 
 
-## Connecting to DBUS
 
 
+----
+
+## Scenario: Connecting to DBUS
 
 First inspect the current bus participants using busctl:
 
@@ -137,8 +119,7 @@ org.freedesktop.timesync1 31482 systemd-timesyn systemd-timesync :1.225 systemd-
 
 When a client connects to the system bus:
 
-```angular2html
-
+```
 bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 ```
 
@@ -162,12 +143,12 @@ UID/PID spoofing at the socket layer is prevented by design.
 
 We can verify that this is out python listener by checking busctl:
 
-```angular2html
+```
 :1.282 33495 python dev              :1.282 session-163.scope 163 -
 ```
 
 Full Log:
-```angular2html
+```
 NAME PID PROCESS USER CONNECTION UNIT SESSION DESCRIPTION
 :1.124 20623 polkitd polkitd          :1.124 polkit.service - -
 :1.126 20665 ModemManager root             :1.126 ModemManager.service - -
@@ -210,7 +191,7 @@ org.freedesktop.timesync1 31482 systemd-timesyn systemd-timesync :1.225 systemd-
 busctl --system list briefly connects to the system bus as a normal client, performs method calls to query the current
 state, and disconnects immediately afterwards
 
-```angular2html
+```
 signal time=1775722708.090243 sender=org.freedesktop.DBus -> destination=(null destination) serial=317
 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
 string ":1.283"
@@ -226,14 +207,14 @@ string ""
 
 This entity 1.283 is also visible in the current snapshot of busctl
 
-```angular2html
+```
 :1.283 33496 busctl dev              :1.283 session-155.scope 155 -
 ```
 
 When we stop our listener this issues a new message NameOwnerChanged to the system bus indicating
 a deregistration:
 
-```angular2html
+```
 
 signal time=1775722714.404157 sender=org.freedesktop.DBus -> destination=(null destination) serial=319
 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
@@ -245,95 +226,15 @@ string ""
 ```
 
 
-### Security mechanisms
-
-- Transport access: connect to socket
-- Authentication / identity binding: peer credentials via kernel
-- Authorization: bus policy: own/send/receive/eavesdrop
-- Service-side security: the target service must still validate the caller and input correctly
-
-Connecting to the bus is intentionally easy; authorization is enforced later when attempting to own names, send method
-calls, receive certain messages, or monitor traffic.
-
-DAC on the system bus.
-
-```angular2html
-dev@dev:/var/run/dbus$ ls -al
-total 0
-drwxr-xr-x 3 root root 80 Mar 12 15:02 .
-drwxr-xr-x 29 root root 960 Apr 9 08:18 ..
-drwxr-xr-x 2 messagebus root 40 Mar 12 15:02 containers
-srw-rw-rw- 1 root root 0 Mar 12 15:02 system_bus_socket
-
-```
-This might differ for session busses as here a predefined group 
-might only be permitted to read and write according to DAC.
 
 
-A second security mechanism for DBUS:
-System bus policy is typically defined through XML files under /etc/dbus-1/system.d/ and /usr/share/dbus-1/system.d/.
+----
 
+## Scenario: Name Binding and Spoofing
 
-However not for connecting to the bus but rather which user
-is allowed to send or receive which messages.
+Scenario 1: User dev: own
+Scenario 2: Group shared: own 
 
-Only if
-
-<allow eavesdrop="true"/>
-
-is set
-Information Disclosure/Sniffing
-is possible for any participant who can only connect to the bus.
-
-Otherwise a participant will only see messages that are adressed to its address 
-or signals (broadcasts).
-
-
-When connecting to the bus an entity needs to authenticate by providing
-the UID, GID and PID to the kernel.
-Therefore Spoofing is not possible by design.
-
-
-In order to conduct these changes, root privileges are needed:
-
-```angular2html
-dev@dev:/etc/dbus-1/system.d$ ls -al
-total 16
-drwxr-xr-x 2 root root 4096 Apr 9 09:04 .
-drwxr-xr-x 4 root root 4096 Feb 10 00:26 ..
--rw-r--r-- 1 root root 662 Jul 2 2025 com.ubuntu.SoftwareProperties.conf
--rw-r--r-- 1 root root 243 Apr 9 09:04 eavesdrop.conf
-
-```
-
-eavesdrop.conf
-```angular2html
-<!DOCTYPE busconfig PUBLIC
- "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
- "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
-
-<busconfig>
-  <policy context="default">
-    <allow eavesdrop="true"/>
-  </policy>
-</busconfig>
-
-
-```
-
-
-Hinweis:
-Denn „Spoofing“ kann je nach Kontext auch heißen:
-
-Well-known name übernehmen
-Service-Impersonation
-confused deputy
-Trust in sender name statt in UID
-
-
-
-
-## Binding a name
 
 
 We define a very simple Service called Logger.
@@ -398,9 +299,19 @@ com.custom.logger" (uid=1000 pid=34192 comm="/home/dev/.virtualenvs/linux-proces
 
 This can be remedied by updating the policy file with the statement:
 
-  <policy user="dev">
+
+<policy user="partner_component">
     <allow send_destination="com.custom.logger"/>
-  </policy>
+  </policy>  
+
+Granting send_destination to the service’s own bus name is typically redundant in simple setups, but still increases
+the process’ ability to actively trigger its own DBus interface.
+
+```angular2html
+<policy user="dev">
+    <allow send_destination="com.custom.logger"/>
+</policy>
+```
 
 
 Now with the interface being available on the bus and the policy updated, lets send again:
@@ -485,6 +396,158 @@ unconfined")
 
 
 @TODO Implement this as a scenario!
+
+
+
+
+### Spoofing
+
+Scenario setup is:
+
+Config:
+
+
+```
+  <policy user="dev">
+    <allow own="com.custom.logger"/>
+  </policy>
+
+  <policy user="partner_component">
+    <allow own="com.custom.logger"/>
+  </policy>
+
+  <policy user="partner_component">
+      <allow send_destination="com.custom.logger"/>
+   </policy>
+
+```
+
+
+User dev: runs Listener L1
+User partner: runs legitimate Client 
+User Partner: runs Listener L2
+
+Assume that partner is able to stop L1.
+
+
+While the first messages are correctly adressed to L1
+
+```angular2html
+/home/dev/.virtualenvs/linux-process-security-lab/bin/python
+/home/dev/linux-process-security-lab/labs/05-dbus/dbus_listener.py
+Connected to system bus
+[SERVICE] vSendMessage received: 0 hello-0 True
+[SERVICE] vSendMessage received: 1 hello-1 True
+[SERVICE] vSendMessage received: 2 hello-2 True
+[SERVICE] vSendMessage received: 3 hello-3 True
+[SERVICE] vSendMessage received: 4 hello-4 True
+[SERVICE] vSendMessage received: 5 hello-5 True
+```
+
+after L1 is stopped the following messages are sent to L2.
+
+``` 
+
+dev@dev:/tmp$ sudo -u partner_component python3 dbus_listener.py
+Connected to system bus
+[SERVICE] vSendMessage received: 6 hello-6 True
+[SERVICE] vSendMessage received: 7 hello-7 True
+[SERVICE] vSendMessage received: 8 hello-8 True
+[SERVICE] vSendMessage received: 9 hello-9 True
+[SERVICE] vSendMessage received: 10 hello-10 True
+[SERVICE] vSendMessage received: 11 hello-11 True
+[SERVICE] vSendMessage received: 12 hello-12 True
+
+```
+
+This is completely transparent to client C.
+See the detailed log [./spoofing.log]
+
+This is reflected in the log:
+
+```
+method call time=1776775347.079210 sender=:1.13 -> destination=com.custom.logger serial=7 path=/com/custom/logger; interface=com.custom.logger; member=vSendMessage
+   int32 5
+   string "hello-5"
+   boolean true
+method return time=1776775347.080082 sender=:1.11 -> destination=:1.13 serial=9 reply_serial=7
+signal time=1776775347.428609 sender=org.freedesktop.DBus -> destination=:1.11 serial=5 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameLost
+   string "com.custom.logger"
+signal time=1776775347.428653 sender=org.freedesktop.DBus -> destination=(null destination) serial=9 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
+   string "com.custom.logger"
+   string ":1.11"
+   string ":1.12"
+signal time=1776775347.428659 sender=org.freedesktop.DBus -> destination=:1.12 serial=4 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameAcquired
+   string "com.custom.logger"
+signal time=1776775347.428664 sender=org.freedesktop.DBus -> destination=:1.11 serial=6 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameLost
+   string ":1.11"
+
+```
+We can clearly see that after message hello-5 the bus node 1.11 reports a NameLost.
+As another member is on the bus with the same name, the bus switches to NameOwnerChanged and assigns the com.custom.logger to
+node 1.12 as the new owner.
+
+
+## Scenario: Observing Traffic
+
+- Start the listener
+- start the client
+- dbus-monitor --system
+   - observe
+- sudo dbus-monitor --system
+   - observe
+
+
+A listener - even started as the same UID as dev - will not be able to monitor bus traffic directed the 
+tuple (PID, UID, GID) which uniquely identifies a process in DBUS.
+Therefore even the command 
+
+dbus-monitor --system run as user dev
+
+will not show messages being received by the listener.
+
+### Inspecting Traffic
+
+
+#### Using root privileges 
+One possibility to do so it to observe DBUS Traffic as root
+
+sudo dbus-monitor --system 
+
+
+```
+method call time=1776763208.322221 sender=:1.63 -> destination=com.custom.logger serial=72 path=/com/custom/logger; interface=com.custom.logger; member=vSendMessage
+   int32 70
+   string "hello-70"
+   boolean true
+method return time=1776763208.323804 sender=:1.62 -> destination=:1.63 serial=74 reply_serial=72
+
+```
+
+This shows the sent and received messages on the system bus. 
+
+
+#### Using receive primitive
+
+According to DBUS spec the primitive send_destination and receive_sender can be used
+
+"send_destination and receive_sender rules mean that messages may not be sent to or received from the *owner* of the
+given name, not that they may not be sent *to that name*. That is, if a connection owns services A, B, C, and sending to
+A is denied, sending to B or C will not work either. As a special case, send_destination="*" matches any message (
+whether it has a destination specified or not), and receive_sender="*" similarly matches any message."
+
+
+
+Using a A primitive 
+<allow receive_sender="com.custom.logger" />
+
+is a no-op.
+
+As a default receiving of messages is allowed.
+
+The exact mechanism and working of receive_sender is unclear at this point.
+
+
 
 
 
@@ -583,3 +646,104 @@ Monitor Connection (privileged)
 → sieht alles
 
 → ignoriert eavesdrop
+
+## Security Policies
+
+Define Policies for Unix users and groups
+
+Deny by default
+
+Wenn du keine send-Rechte hast:
+
+👉 kannst du NICHT:
+
+Methoden aufrufen
+Introspect machen
+Properties lesen
+
+👉 aber kannst oft:
+
+sehen, dass der Service existiert
+gewisse Signals beobachten
+
+### Security mechanisms
+
+- Transport access: connect to socket
+- Authentication / identity binding: peer credentials via kernel
+- Authorization: bus policy: own/send/receive/eavesdrop
+- Service-side security: the target service must still validate the caller and input correctly
+
+Connecting to the bus is intentionally easy; authorization is enforced later when attempting to own names, send method
+calls, receive certain messages, or monitor traffic.
+
+DAC on the system bus.
+
+```angular2html
+dev@dev:/var/run/dbus$ ls -al
+total 0
+drwxr-xr-x 3 root root 80 Mar 12 15:02 .
+drwxr-xr-x 29 root root 960 Apr 9 08:18 ..
+drwxr-xr-x 2 messagebus root 40 Mar 12 15:02 containers
+srw-rw-rw- 1 root root 0 Mar 12 15:02 system_bus_socket
+
+```
+
+This might differ for session busses as here a predefined group
+might only be permitted to read and write according to DAC.
+
+A second security mechanism for DBUS:
+System bus policy is typically defined through XML files under /etc/dbus-1/system.d/ and /usr/share/dbus-1/system.d/.
+
+However not for connecting to the bus but rather which user
+is allowed to send or receive which messages.
+
+Only if
+
+<allow eavesdrop="true"/>
+
+is set
+Information Disclosure/Sniffing
+is possible for any participant who can only connect to the bus.
+
+Otherwise a participant will only see messages that are adressed to its address
+or signals (broadcasts).
+
+When connecting to the bus an entity needs to authenticate by providing
+the UID, GID and PID to the kernel.
+Therefore Spoofing is not possible by design.
+
+In order to conduct these changes, root privileges are needed:
+
+```angular2html
+dev@dev:/etc/dbus-1/system.d$ ls -al
+total 16
+drwxr-xr-x 2 root root 4096 Apr 9 09:04 .
+drwxr-xr-x 4 root root 4096 Feb 10 00:26 ..
+-rw-r--r-- 1 root root 662 Jul 2 2025 com.ubuntu.SoftwareProperties.conf
+-rw-r--r-- 1 root root 243 Apr 9 09:04 eavesdrop.conf
+
+```
+
+eavesdrop.conf
+
+```angular2html
+<!DOCTYPE busconfig PUBLIC
+ "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+
+<busconfig>
+  <policy context="default">
+    <allow eavesdrop="true"/>
+  </policy>
+</busconfig>
+
+
+```
+
+Hinweis:
+Denn „Spoofing“ kann je nach Kontext auch heißen:
+
+Well-known name übernehmen
+Service-Impersonation
+confused deputy
+Trust in sender name statt in UID
