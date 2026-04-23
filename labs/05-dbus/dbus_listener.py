@@ -8,6 +8,7 @@ class Logger(ServiceInterface):
     def __init__(self):
         super().__init__('com.custom.logger')
 
+    # This Tag is needed for DBUS to recognize it as a method
     @method()
     def vSendMessage(self, number: 'i', text: 's', flag: 'b'):
         print(f"[SERVICE] vSendMessage received: {number} {text} {flag}")
@@ -20,6 +21,8 @@ async def main():
 
     service = Logger()
 
+    # Without an export these are just local python methods which
+    # are not available on DBUS.
     bus.export('/com/custom/logger', service)
 
     await bus.request_name('com.custom.logger')

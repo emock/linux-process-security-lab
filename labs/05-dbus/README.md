@@ -52,6 +52,16 @@ gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --
 Observe the result
 TODO
 
+## Scenario: Spoofing a service
+
+- Deploy the config file spoofing.conf and restart DBUS
+- Run sudo dbus-monitor --system to monitor the traffic
+- run the script spoofing.sh
+- Start the listener as user dev
+- Start the client as user partner_component
+
+
+
 
 
 
@@ -94,12 +104,7 @@ and observe again.
 
 
 
-Scenario: Spoofing a service
 
-- Deploy the config file spoofing.conf and restart DBUS
-- Start the listener as user dev
-- Start the client as user partner_component
-- 
 
 
 

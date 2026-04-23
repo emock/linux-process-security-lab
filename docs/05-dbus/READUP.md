@@ -2,12 +2,12 @@
 
 ## Result
 
-| Scenario         | /etc/dbus-1/system.d      \<allow/\> Primitives | dev | partner | third_party |
-|:-----------------|:------------------------------------------------|:----|:--------|:------------|
-| Connect          | none (socket reachable)                         | X   | X       | X           |
-| Listening        |                                                 | X   | X       | N           |
-| Own service name | own="com.custom.logger"                         | X   | N       | N           |
-| Send method call | send_destination="com.custom.logger"            | X   | N       | N           |
+| Scenario            | /etc/dbus-1/system.d      \<allow/\> Primitives | dev | partner | third_party |
+|:--------------------|:------------------------------------------------|:----|:--------|:------------|
+| 01 Connect          | none (socket reachable)                         | X   | X       | X           |
+| 02 Own service name | own="com.custom.logger"                         | X   | N       | N           |
+| 02 Send method call | send_destination="com.custom.logger"            | X   | N       | N           |
+| Listening           |                                                 | X   | X       | N           |
 
 
 ## Technical Background
@@ -60,13 +60,24 @@ Client perspective
 
 ## Useful commands
 
-| Command                                        | Note |      
-|:-----------------------------------------------|:------------------------------------------------|
-| busctl --system list                           | Show current bus participants |
-| bus-monitor --system \| tee ~/dbus_monitor.log |  to log the current traffic 
-| dbus-monitor --system                               | Messages being sent on the bus can be inspected using:                         | 
-|Sending messages | dbus call --system --dest com.custom.logger --object-path /com/custom/logger --method
-com.custom.logger.vSendMessage 42 | 
+| Command                                        | Note                                                                                                                                  |      
+|:-----------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------|
+| busctl --system list                           | Show current bus participants                                                                                                         |
+| bus-monitor --system \| tee ~/dbus_monitor.log | to log the current traffic                                                                                                            
+| dbus-monitor --system                               | Messages being sent on the bus can be inspected using:                                                                                | 
+|Sending Messages | gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method com.custom.logger.vSendMessage 42 "hello" True | 
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -74,7 +85,7 @@ com.custom.logger.vSendMessage 42 |
 
 ----
 
-## Scenario: Connecting to DBUS
+## Scenario 01: Connecting to DBUS
 
 First inspect the current bus participants using busctl:
 
@@ -83,39 +94,16 @@ First inspect the current bus participants using busctl:
 NAME PID PROCESS USER CONNECTION UNIT SESSION DESCRIPTION
 :1.124 20623 polkitd polkitd          :1.124 polkit.service - -
 :1.126 20665 ModemManager root             :1.126 ModemManager.service - -
-:1.219 1 systemd root             :1.219 init.scope - -
-:1.222 31474 systemd-network systemd-network  :1.222 systemd-networkd.service - -
-:1.224 31490 udisksd root             :1.224 udisks2.service - -
-:1.225 31482 systemd-timesyn systemd-timesync :1.225 systemd-timesyncd.service - -
-:1.226 31475 systemd-resolve systemd-resolve  :1.226 systemd-resolved.service - -
-:1.227 31491 upowerd root             :1.227 upower.service - -
-:1.251 32820 systemd dev              :1.251 user@1000.service - -
+...
 :1.269 33414 dbus-monitor dev              :1.269 session-166.scope 166 -
 :1.280 33486 busctl dev              :1.280 session-155.scope 155 -
-:1.6 745 systemd-logind root             :1.6 systemd-logind.service - -
-:1.8 801 unattended-upgr root             :1.8 unattended-upgrades.service - -
-com.ubuntu.SoftwareProperties - - -                (activatable) - - -
-io.netplan.Netplan - - -                (activatable) - - -
-org.freedesktop.DBus 1 systemd root - init.scope - -
-org.freedesktop.ModemManager1 20665 ModemManager root             :1.126 ModemManager.service - -
-org.freedesktop.PackageKit - - -                (activatable) - - -
-org.freedesktop.PolicyKit1 20623 polkitd polkitd          :1.124 polkit.service - -
-org.freedesktop.UDisks2 31490 udisksd root             :1.224 udisks2.service - -
-org.freedesktop.UPower 31491 upowerd root             :1.227 upower.service - -
-org.freedesktop.bolt - - -                (activatable) - - -
-org.freedesktop.fwupd - - -                (activatable) - - -
-org.freedesktop.hostname1 - - -                (activatable) - - -
-org.freedesktop.locale1 - - -                (activatable) - - -
-org.freedesktop.login1 745 systemd-logind root             :1.6 systemd-logind.service - -
-org.freedesktop.network1 31474 systemd-network systemd-network  :1.222 systemd-networkd.service - -
-org.freedesktop.resolve1 31475 systemd-resolve systemd-resolve  :1.226 systemd-resolved.service - -
-org.freedesktop.systemd1 1 systemd root             :1.219 init.scope - -
-org.freedesktop.thermald - - -                (activatable) - - -
-org.freedesktop.timedate1 - - -                (activatable) - - -
+...
 org.freedesktop.timesync1 31482 systemd-timesyn systemd-timesync :1.225 systemd-timesyncd.service - -
 
-
 ```
+
+The full log is available in [busctl_before.txt](01_busctl_before.txt)
+
 
 When a client connects to the system bus:
 
@@ -125,11 +113,14 @@ bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 
 we can observe a NameOwnerChanged message in dbus-monitor:
 
+```
 signal time=1775722702.656383 sender=org.freedesktop.DBus -> destination=(null destination) serial=316
 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
 string ":1.282"
 string ""
 string ":1.282"
+```
+
 
 
 At connection time, the bus daemon can obtain the peer's UID, GID and PID from the kernel via SO_PEERCRED.
@@ -137,55 +128,20 @@ At connection time, the bus daemon can obtain the peer's UID, GID and PID from t
 UID/PID spoofing at the socket layer is prevented by design.
 
 
+We can verify that this is our python listener by checking busctl:
 
-
-
-
-We can verify that this is out python listener by checking busctl:
-
-```
-:1.282 33495 python dev              :1.282 session-163.scope 163 -
-```
-
-Full Log:
 ```
 NAME PID PROCESS USER CONNECTION UNIT SESSION DESCRIPTION
-:1.124 20623 polkitd polkitd          :1.124 polkit.service - -
-:1.126 20665 ModemManager root             :1.126 ModemManager.service - -
-:1.219 1 systemd root             :1.219 init.scope - -
-:1.222 31474 systemd-network systemd-network  :1.222 systemd-networkd.service - -
-:1.224 31490 udisksd root             :1.224 udisks2.service - -
-:1.225 31482 systemd-timesyn systemd-timesync :1.225 systemd-timesyncd.service - -
-:1.226 31475 systemd-resolve systemd-resolve  :1.226 systemd-resolved.service - -
-:1.227 31491 upowerd root             :1.227 upower.service - -
-:1.251 32820 systemd dev              :1.251 user@1000.service - -
+...
 :1.281 33488 dbus-monitor dev              :1.281 session-166.scope 166 -
 :1.282 33495 python dev              :1.282 session-163.scope 163 -
 :1.283 33496 busctl dev              :1.283 session-155.scope 155 -
-:1.6 745 systemd-logind root             :1.6 systemd-logind.service - -
-:1.8 801 unattended-upgr root             :1.8 unattended-upgrades.service - -
-com.ubuntu.SoftwareProperties - - -                (activatable) - - -
-io.netplan.Netplan - - -                (activatable) - - -
-org.freedesktop.DBus 1 systemd root - init.scope - -
-org.freedesktop.ModemManager1 20665 ModemManager root             :1.126 ModemManager.service - -
-org.freedesktop.PackageKit - - -                (activatable) - - -
-org.freedesktop.PolicyKit1 20623 polkitd polkitd          :1.124 polkit.service - -
-org.freedesktop.UDisks2 31490 udisksd root             :1.224 udisks2.service - -
-org.freedesktop.UPower 31491 upowerd root             :1.227 upower.service - -
-org.freedesktop.bolt - - -                (activatable) - - -
-org.freedesktop.fwupd - - -                (activatable) - - -
-org.freedesktop.hostname1 - - -                (activatable) - - -
-org.freedesktop.locale1 - - -                (activatable) - - -
-org.freedesktop.login1 745 systemd-logind root             :1.6 systemd-logind.service - -
-org.freedesktop.network1 31474 systemd-network systemd-network  :1.222 systemd-networkd.service - -
-org.freedesktop.resolve1 31475 systemd-resolve systemd-resolve  :1.226 systemd-resolved.service - -
-org.freedesktop.systemd1 1 systemd root             :1.219 init.scope - -
-org.freedesktop.thermald - - -                (activatable) - - -
-org.freedesktop.timedate1 - - -                (activatable) - - -
-org.freedesktop.timesync1 31482 systemd-timesyn systemd-timesync :1.225 systemd-timesyncd.service - -
-
+...
 
 ```
+
+The full log is available in [busctl_after.txt](01_busctl_after.txt)
+
 
 
 busctl --system list briefly connects to the system bus as a normal client, performs method calls to query the current
@@ -215,14 +171,11 @@ When we stop our listener this issues a new message NameOwnerChanged to the syst
 a deregistration:
 
 ```
-
 signal time=1775722714.404157 sender=org.freedesktop.DBus -> destination=(null destination) serial=319
 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameOwnerChanged
 string ":1.282"
 string ":1.282"
 string ""
-
-
 ```
 
 
@@ -230,80 +183,61 @@ string ""
 
 ----
 
-## Scenario: Name Binding and Spoofing
-
-Scenario 1: User dev: own
-Scenario 2: Group shared: own 
-
-
+## Scenario 02: Basic Operations - Name Binding and Sending
 
 We define a very simple Service called Logger.
-This service just offers one method which takes an integer as input
-and prints it to command line.
+This service just offers one method vSendMessage and prints it to command line.
+
+We model the interaction on the system as follows:
+
+| Component          | User              |
+|:-------------------|:------------------|
+| dbus_listener      | dev               |
+| dbus_client        | partner_component |
 
 
-
-class Logger(ServiceInterface):
-def __init__(self):
-super().__init__('com.custom.Logger')
-
-@method()
-def vSendMessage(self, number: 'i'):
-print(f"[SERVICE] vSendMessage received: {number}")
-
-In order to make the service available to DBUS we need to
-export the service to DBUS.
-Without an export these are just local python methods which 
-are not available on DBUS.
+Furthermore for this to work the minimal required permissions on DBUS are documented in [com.custom.logger.conf](/labs/05-dbus/02_com.custom.logger.conf)
 
 ```
-service = Logger()
-bus.export('/com/custom/logger', service)
-await bus.request_name('com.custom.Logger')
+<busconfig>
+  <policy user="dev">
+    <allow own="com.custom.logger"/>
+  </policy>
+
+  <policy user="partner_component">
+      <allow send_destination="com.custom.logger"/>
+    </policy>
 ```
 
-This is not allowed by default and we encounter an error:
+This grants the user dev to bind the name com.custom.logger and user partner_component to send messages to this service.
 
+Without the own primitive the listener would encounter an error when doing 
+
+```
 dbus_next.errors.DBusError: Connection ":1.1" is not allowed to own the service "com.custom.Logger" due to security
 policies in the configuration file
+```
 
-
-In Order to allow such a binding we need to define 
-a policy in
-/etc/dbus-1/system.d
-
-This can only be done by root.
-
-Damit erlaubst du erstmal nur:
-
-own von com.custom.Logger
-
-Das heißt noch nicht automatisch, dass andere alles dorthin senden dürfen.
-Dafür gibt es separate send_destination, receive, eavesdrop usw.
-
-
-
-This is what we will test next:
+The same goes for sending messages to a service.
 
 When calling the service via
 
+```
 dev@dev:~$ gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method
 com.custom.logger.vsendMessage 42
+```
 
-we receive:
+and no allow primitive set, DBUS replies with an AccessDenied message:
 
+```
 Error: GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: Rejected send message, 1 matched rules; type="method_call",
 sender=":1.4" (uid=1000 pid=34193 comm="gdbus call --system --dest com.custom.logger --obj" label="unconfined")
 interface="com.custom.logger" member="vsendMessage" error name="(unset)" requested_reply="0" destination="
 com.custom.logger" (uid=1000 pid=34192 comm="/home/dev/.virtualenvs/linux-process-security-lab/" label="unconfined")
 
-This can be remedied by updating the policy file with the statement:
+```
 
-
-<policy user="partner_component">
-    <allow send_destination="com.custom.logger"/>
-  </policy>  
-
+Hint:
 Granting send_destination to the service’s own bus name is typically redundant in simple setups, but still increases
 the process’ ability to actively trigger its own DBus interface.
 
@@ -313,22 +247,9 @@ the process’ ability to actively trigger its own DBus interface.
 </policy>
 ```
 
+Adding this policy also allows us to introspect the service and get the method signatures using
 
-Now with the interface being available on the bus and the policy updated, lets send again:
-
-The Listener receives the value:
-
-```
-/home/dev/.virtualenvs/linux-process-security-lab/bin/python
-/home/dev/linux-process-security-lab/labs/05-dbus/dbus_listener.py
-Connected to system bus
-[SERVICE] vSendMessage received: 42
-
-```
-
-
-Adding this policy also allows us to introspect the service and get the method signatures.
-
+**gdbus introspect --system --dest com.custom.logger --object-path /com/custom/logger**
 
 ``` 
 node /com/custom/logger {
@@ -383,52 +304,44 @@ node /com/custom/logger {
 
 ```
 
+Note that any unauthorized party, such as user third_party, will not be able to interact with the service nor send a message to it.
+DBUS will report an AccessDenied Error, e.g.:
 
-Cross Check:
-
-dev@dev:~$ sudo -u nobody gdbus introspect --system --dest com.custom.logger --object-path /com/custom/logger > ~
-/introspect.log
-Error: GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: Rejected send message, 1 matched rules; type="method_call",
-sender=":1.16" (uid=65534 pid=34362 comm="gdbus introspect --system --dest com.custom.logger" label="unconfined")
-interface="org.freedesktop.DBus.Introspectable" member="Introspect" error name="(unset)" requested_reply="0"
-destination="com.custom.logger" (uid=1000 pid=34290 comm="/home/dev/.virtualenvs/linux-process-security-lab/" label="
-unconfined")
-
-
-@TODO Implement this as a scenario!
-
-
-
-
-### Spoofing
-
-Scenario setup is:
-
-Config:
-
-
+```angular2html
+Error: GDBus.Error:org.freedesktop.DBus.Error.AccessDenied: Rejected send message, 1 matched rules; 
+type="method_call", sender=":1.3" (uid=1002 pid=58132 comm="gdbus introspect --system --dest com.custom.logger" 
+label="unconfined") interface="org.freedesktop.DBus.Introspectable" member="Introspect" error name="(unset)" 
+requested_reply="0" destination="com.custom.logger" (uid=1000 pid=58123 comm="python3 /tmp/dbus_listener.py" 
+label="unconfined")
 ```
-  <policy user="dev">
-    <allow own="com.custom.logger"/>
-  </policy>
 
+
+### Scenario 03 : Spoofing
+
+We extend the Bind scenario to demonstrate Name Hijacking or Spoofing misuses on DBUS.
+
+The setup is similar to above:
+
+We model the interaction on the system as follows:
+
+| Component          | User              |
+|:-------------------|:------------------|
+| dbus_listener      | dev               |
+| dbus_client        | partner_component |
+| dbus_listener        | partner_component |
+
+Partner_component acts as partly trusted peer, but also maliciously tries to impersonate as dbus_listener.
+
+This is possible if the configuration contains a misconfiguration such as in [Spoofing](/labs/05-dbus/03_spoofing.conf)
+```
   <policy user="partner_component">
     <allow own="com.custom.logger"/>
   </policy>
 
-  <policy user="partner_component">
-      <allow send_destination="com.custom.logger"/>
-   </policy>
-
 ```
 
-
-User dev: runs Listener L1
-User partner: runs legitimate Client 
-User Partner: runs Listener L2
-
-Assume that partner is able to stop L1.
-
+Preconditition for the Attack to succeed:
+Partner component needs to kill the service offered by dbus_listener, e.g. by causing a crash.
 
 While the first messages are correctly adressed to L1
 
@@ -444,7 +357,7 @@ Connected to system bus
 [SERVICE] vSendMessage received: 5 hello-5 True
 ```
 
-after L1 is stopped the following messages are sent to L2.
+after L1 is stopped/crashed the following messages are sent to L2.
 
 ``` 
 
@@ -461,7 +374,7 @@ Connected to system bus
 ```
 
 This is completely transparent to client C.
-See the detailed log [./spoofing.log]
+See the detailed log [./03_spoofing.log]
 
 This is reflected in the log:
 
