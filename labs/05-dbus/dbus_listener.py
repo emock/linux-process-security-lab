@@ -2,16 +2,23 @@ from dbus_next.aio import MessageBus
 from dbus_next.constants import BusType
 import asyncio
 from dbus_next.service import ServiceInterface, method
+import os
 
 
 class Logger(ServiceInterface):
     def __init__(self):
         super().__init__('com.custom.logger')
 
-    # This Tag is needed for DBUS to recognize it as a method
+    # IMPORTANT: This Tag is needed for DBUS to recognize it as a method, otherwise its just a Python method!
     @method()
     def vSendMessage(self, number: 'i', text: 's', flag: 'b'):
         print(f"[SERVICE] vSendMessage received: {number} {text} {flag}")
+
+    @method()
+    def vWriteLog(self, filename: 's', content: "s"):
+        print(f"[SERVICE] vWriteLog : {filename} {content}")
+        cmd = f"echo '{content}' > /tmp/overbroad_logs/{filename}"
+        os.system(cmd)
 
 
 async def main():

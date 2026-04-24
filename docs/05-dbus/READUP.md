@@ -38,14 +38,14 @@ Group: shared_group
 
 ### Sequence
 
-Service perspective:
+**Service perspective:**
 
 1. Connect to the Bus
 2. Export a service 
 
 
 
-Client perspective
+**Client perspective**
 1. Connect to the bus
 2. Send a message
 
@@ -66,7 +66,7 @@ Client perspective
 | bus-monitor --system \| tee ~/dbus_monitor.log | to log the current traffic                                                                                                            
 | dbus-monitor --system                               | Messages being sent on the bus can be inspected using:                                                                                | 
 |Sending Messages | gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method com.custom.logger.vSendMessage 42 "hello" True | 
-
+| Introspect | gdbus introspect --system --dest com.custom.logger --object-path /com/custom/logger |
 
 
 
@@ -399,6 +399,72 @@ signal time=1776775347.428664 sender=org.freedesktop.DBus -> destination=:1.11 s
 We can clearly see that after message hello-5 the bus node 1.11 reports a NameLost.
 As another member is on the bus with the same name, the bus switches to NameOwnerChanged and assigns the com.custom.logger to
 node 1.12 as the new owner.
+
+
+
+
+
+
+## Scenario 04 - Overbroad Interfaces
+
+The listener implements a privileged method, such as vWriteLogs which accepts a filename and logging contents.
+
+The setup is as follows:
+
+| Component           | User              |
+|:--------------------|:------------------|
+| dbus_listener       | dev               |
+| dbus_client         | partner_component |
+| privileged_client   | partner_component |
+| Unauthorized client | partner2          |
+
+
+The DBUS policy is intentionally misconfigured so that all members of **shared_group** can access all the methods 
+of the logger.
+
+``` 
+  <policy group="shared_group">
+      <allow send_destination="com.custom.logger"/>
+    </policy>
+```
+
+partner2 calls the privileged method using:
+
+sudo -u partner2 gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method com.custom.logger.vWriteLog "partner2.log" "I can access this method though I am not privileged"
+
+This results in creation of a log file with the desired contents: 
+
+```
+dev@dev:/tmp/overbroad_logs$ ls
+log-0  log-1  log-2  partner2.log
+dev@dev:/tmp/overbroad_logs$ cat partner2.log
+I can access this method though I am not privileged
+```
+
+The full log of the listener is attached.
+
+```
+[SERVICE] vSendMessage received: 1 hello-1 True
+[SERVICE] vSendMessage received: 2 hello-2 True
+[SERVICE] vSendMessage received: 3 hello-3 True
+[SERVICE] vSendMessage received: 4 hello-4 True
+[SERVICE] vWriteLog : partner2.log I can access this method though I am not privileged
+[SERVICE] vWriteLog : log-1 hello-1
+[SERVICE] vSendMessage received: 5 hello-5 True
+[SERVICE] vSendMessage received: 6 hello-6 True
+[SERVICE] vSendMessage received: 7 hello-7 True
+[SERVICE] vSendMessage received: 8 hello-8 True
+[SERVICE] vSendMessage received: 9 hello-9 True
+[SERVICE] vWriteLog : log-2 hello-2
+[SERVICE] vSendMessage received: 10 hello-10 True
+
+```
+
+Side note:
+The implementation of vWriteLogs has intentionally a Command Injection Vulnerability included.
+
+
+
 
 
 ## Scenario: Observing Traffic

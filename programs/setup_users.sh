@@ -19,6 +19,7 @@ sudo groupadd -f shared_group
 
 # does not have a home but access to shell
 id partner_component &>/dev/null || sudo useradd -M -s /bin/bash partner_component
+id partner2 &>/dev/null || sudo useradd -M -s /bin/bash partner2
 id third_party &>/dev/null || sudo useradd -M -s /bin/bash third_party
 
 
@@ -28,23 +29,19 @@ sudo usermod -aG shared_group dev
 
 #only is additionally member of labgroup, no other groups
 sudo usermod -G shared_group partner_component
+sudo usermod -G shared_group partner2
 
 
 # Final Check
 id partner_component
 groups partner_component
 
+id partner2
+groups partner2
+
 
 id third_party
 groups third_party
 
 
-#############################
-# Setup the Directories and Files
-#############################
-
-cp "$SCRIPT_DIR/dbus_listener.py" "/tmp/"
-cp "$SCRIPT_DIR/dbus_client.py" "/tmp/"
-
-
-echo "Lab 05 setup complete."
+echo "User setup complete"

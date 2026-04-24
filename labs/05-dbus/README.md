@@ -11,54 +11,35 @@
 
 
 
-# Scenario: DBUS Basics - Connecting to DBUS
+# Scenario 01: DBUS Basics - Connecting to DBUS
 
 Familiarize with DBUS and see who is currently on the bus:
 ```
 busctl --system list 
 ```
 
-
-
-
-
-
-# Scenario: DBUS Basics - Binding to a service Name
-
-First lets start from scratch and run the listener.py using user dev:
-
-Then try call one of the methods using:
-
-```
-gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method com.custom.logger.vsendMessage 42
-```
-This will result in an error as a service needs to make its methods and properties public to the DBUS Daemon
-for some other client to call these.
-
-First copy the configuration file **com.custom.logger.conf** to to **/etc/dbus-1/system.d/**
-
-Then execute the command
-```
-sudo systemctl restart dbus
-```
-The service VsendMessage from com.custom.logger.conf is now available on dbus.
-
-Verify using: 
-
-```
-gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method com.custom.logger.vsendMessage 42
-```
-
-Observe the result
 TODO
 
-## Scenario: Spoofing a service
 
-- Deploy the config file spoofing.conf and restart DBUS
-- Run sudo dbus-monitor --system to monitor the traffic
-- run the script spoofing.sh
-- Start the listener as user dev
-- Start the client as user partner_component
+
+
+# Scenario 2: DBUS Basics - Binding to a service Name
+
+- Run script: ./02_bind.sh
+
+
+## Scenario 03: Spoofing a service
+
+- Monitor the traffic:  sudo dbus-monitor --system 
+- Run script: ./03_spoofing.sh
+
+## Scenario 04: Overbroad Interfaces
+
+- Run script: ./04_overbroad_interfaces.sh
+- sudo -u partner2 gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method
+com.custom.logger.vWriteLog "hello.log;id| tee /tmp/overbroad_logs/POC" "contents test test"
+
+
 
 
 

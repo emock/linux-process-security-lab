@@ -9,9 +9,15 @@
 # lab-05-dbus
 - [x] Implement receive
 - [x] Implement send (client)
-- [x] Scenario 1: Bind a service and send data
-- [x] Scenario 2: Spoof a Service
+- [x] Scenario 2: Bind a service and send data
+- [x] Scenario 3: Spoof a Service
     - [x] Update the READUP and README
+- [ ] Scenario 4: Overbroad Interfaces
+  - [ ] Extend Service by a privileged method
+  - [x] create second user in group shared_group
+  - [x] Second user can execute privileged action
+- [ ] Implement signals
+- 
 - [ ] Scenario eavesdropping: Run Service as dev, listen with shared_group user
 - [ ] Receive Rules <allow receive_sender="..."/> <allow receive_interface="..."/> <allow receive_member="..."/>
 
