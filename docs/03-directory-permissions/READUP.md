@@ -1,8 +1,731 @@
-USER            FILE                                                         OP       RESULT
-----------------------------------------------------------------------------------------------------
-dev /tmp/lab-03-s1-700/config.json list X
-dev /tmp/lab-03-s2-500/config.json list X
-dev /tmp/lab-03-s3-300/config.json list N
-dev /tmp/lab-03-s4-200/config.json list N
-dev /tmp/lab-03-s5-100/config.json list N
-dev /tmp/lab-03-s6-000/config.json list N
+
+
+# Overview
+
+
+## Technical Background
+
+A directory in Unix is a table of names and inode references, best illustrated by 
+ls -ai.
+
+```commandline
+dev@dev:/tmp/lab-03-s1-700$ ls -ai
+262475 .  
+131074 ..  
+262507 config.json  
+262507 second
+```
+
+This shows the automatically generated entries self (.) and parent (..) as well as the 
+child nodes of a directory.
+In this case a second file with a different name has been created pointing to the same inode
+as config.json.
+The directory structure lists this as a separate item.
+
+The **Unix Read Permission (r)** on a directory grants access to read this table.
+As a general rule of thumb, using tab complete in a terminal on directory with active
+read permission will work.
+
+The metadata of the file, such as group, owner, file size are stored in the referenced Inode.
+The Execute permission (x) facilitates a lookup/path traversal of this inode.
+
+stat() is used here as a practical demonstration of this behavior.
+
+```commandline
+statx(AT_FDCWD, "lab-03-s1-700/config.json", AT_STATX_SYNC_AS_STAT|AT_SYMLINK_NOFOLLOW|AT_NO_AUTOMOUNT, STATX_ALL,
+{stx_mask=STATX_ALL|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|000, stx_size=40, ...}) = 0
+```
+Internally the following happens:
+
+```commandline
+AT_FDCWD
+    ↓
+lookup("lab-03-s1-700")
+    ↓
+check x permission
+    ↓
+lookup("config.json")
+    ↓
+check x permission
+    ↓
+inode found
+    ↓
+return metadata
+
+```
+
+This is why the Execute permission is needed on a directory: To resolve/lookup child-inodes
+and traverse the path to the target file.
+
+
+
+```commandline
+dev@dev:/tmp/lab-03-s1-700$ stat config.json 
+  File: config.json
+  Size: 40        	Blocks: 8          IO Block: 4096   regular file
+Device: 252,0	Inode: 262507      Links: 2
+Access: (0000/----------)  Uid: ( 1000/     dev)   Gid: ( 1001/shared_group)
+Access: 2026-05-27 07:21:06.576196271 +0000
+Modify: 2026-05-27 07:21:06.576196271 +0000
+Change: 2026-05-27 08:13:36.329713579 +0000
+ Birth: 2026-05-27 07:21:06.576196271 +0000
+```
+
+This provides the attributes which are commonly of interest for each entry, such as 
+size, owner, group and creation date.
+
+Using the common ls -lai switch additionally performs a stat(() on each entry of the
+directory. This shows the retrieval of the file metadata.
+
+```commandline
+dev@dev:/tmp/lab-03-s1-700$ ls -lai
+total 16
+262475 drwx------  2 dev  shared_group 4096 May 27 08:13 .
+131074 drwxrwxrwt 34 root root         4096 May 27 07:54 ..
+262507 ----------  2 dev  shared_group   40 May 27 07:21 config.json
+262507 ----------  2 dev  shared_group   40 May 27 07:21 second
+
+
+```
+
+Consequently, in order to resolve metadata the name of the file is required as a prerequisite. 
+
+## Results Read
+
+
+The following table provides an overview of the results.
+
+
+
+|USER| FILE                             | OP   | RESULT |
+|----|----------------------------------|------|--------|
+|dev | /tmp/lab-03-s1-700/config.json   | list | X      |
+|dev | /tmp/lab-03-s2-600/config.json   | list | X      |
+|dev | /tmp/lab-03-s3-500/config.json   | list | X      |
+|dev | /tmp/lab-03-s4-400/config.json   | list | X      |
+|dev | /tmp/lab-03-s5-300/config.json   | list | N      |
+|dev | /tmp/lab-03-s6-200/config.json   | list | N      |
+|dev | /tmp/lab-03-s7-100/config.json   | list | N      |
+|dev | /tmp/lab-03-s8-000/config.json   | list | N      |
+
+
+If the read permission is set an entitled entity can read out name and inode:
+
+```commandline
+/tmp/lab-03-s4-400/
+config.json 263431
+```
+
+
+### Security Considerations
+
+Having read permissions on a directory facilitates information disclosure about the names 
+of the files in the directory.
+No further metadata, such as permissions, owner or size can be obtained.
+
+Generally speaking, this is what would be expected.
+
+
+
+## Results Execute
+
+Modelling the Execute bit must be done with a file within the directory.
+This is due to the fact that technically a reader first gets the file list of the directory and 
+then tries to call a stat() on the file.
+Exactly this stat() call is governed by the execute bit, i.e. is a caller allowed to 
+perform actions in this directory
+
+|USER |           FILE     |                                                    OP |  RESULT|
+|------|--------------------|-----------------------------------------------------|---------------------|
+|dev |/tmp/lab-03-s1-700/config.json |stat |X|
+|dev |/tmp/lab-03-s2-600/config.json |stat |N|
+|dev |/tmp/lab-03-s3-500/config.json |stat |X|
+|dev |/tmp/lab-03-s4-400/config.json |stat |N|
+|dev |/tmp/lab-03-s5-300/config.json |stat |X|
+|dev |/tmp/lab-03-s6-200/config.json |stat |N|
+|dev |/tmp/lab-03-s7-100/config.json |stat |X|
+|dev |/tmp/lab-03-s8-000/config.json |stat |N|
+
+```commandline
+
+dev@dev:/tmp$ stat lab-03-s5-300/config.json 
+  File: lab-03-s5-300/config.json
+  Size: 40        	Blocks: 8          IO Block: 4096   regular file
+Device: 252,0	Inode: 263570      Links: 1
+Access: (0000/----------)  Uid: ( 1000/     dev)   Gid: ( 1001/shared_group)
+Access: 2026-05-27 07:21:06.594196588 +0000
+Modify: 2026-05-27 07:21:06.594196588 +0000
+Change: 2026-05-27 07:21:06.634197292 +0000
+ Birth: 2026-05-27 07:21:06.594196588 +0000
+dev@dev:/tmp$ stat lab-03-s4-400/config.json 
+stat: cannot statx 'lab-03-s4-400/config.json': Permission denied
+
+```
+
+
+## Combining Read and Execute
+
+The command ls -ali gives an impression which capabilities are available with both r+x set.
+
+```commandline
+
+dev@dev:/tmp$ ls -ali lab*
+lab-03-s1-700:
+total 12
+262475 drwx------  2 dev  shared_group 4096 May 27 11:31 .
+131074 drwxrwxrwt 34 root root         4096 May 27 07:54 ..
+262507 ----------  1 dev  shared_group   40 May 27 07:21 config.json
+
+lab-03-s2-600:
+ls: cannot access 'lab-03-s2-600/.': Permission denied
+ls: cannot access 'lab-03-s2-600/config.json': Permission denied
+ls: cannot access 'lab-03-s2-600/..': Permission denied
+total 0
+? d????????? ? ? ? ?            ? .
+? d????????? ? ? ? ?            ? ..
+? -????????? ? ? ? ?            ? config.json
+
+lab-03-s3-500:
+total 12
+262867 dr-x------  2 dev  shared_group 4096 May 27 07:21 .
+131074 drwxrwxrwt 34 root root         4096 May 27 07:54 ..
+263057 ----------  1 dev  shared_group   40 May 27 07:21 config.json
+
+lab-03-s4-400:
+ls: cannot access 'lab-03-s4-400/.': Permission denied
+ls: cannot access 'lab-03-s4-400/config.json': Permission denied
+ls: cannot access 'lab-03-s4-400/..': Permission denied
+total 0
+? d????????? ? ? ? ?            ? .
+? d????????? ? ? ? ?            ? ..
+? -????????? ? ? ? ?            ? config.json
+ls: cannot open directory 'lab-03-s5-300': Permission denied
+ls: cannot open directory 'lab-03-s6-200': Permission denied
+ls: cannot open directory 'lab-03-s7-100': Permission denied
+ls: cannot open directory 'lab-03-s8-000': Permission denied
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ja — das lohnt sich wirklich sauber zu verstehen, weil Unix-Directories an der Stelle unintuitiv sind.
+
+Der Kern ist:
+
+> Ein Directory ist unter Unix **keine „Mappe“**, sondern technisch eine **Tabelle von Namen → Inode-Referenzen**.
+
+Und `r`, `w`, `x` wirken auf **verschiedene Operationen auf dieser Tabelle**.
+
+---
+
+# 1. Was steckt technisch in einem Directory?
+
+Ein Directory enthält vereinfacht:
+
+```text
+name        inode
+-------------------
+config.json 12345
+secret.key  12346
+logs        12347
+```
+
+Also:
+
+> **Dateiname → Verweis auf Inode**
+
+Nicht den Dateiinhalt.
+
+Die eigentlichen Metadaten liegen im **Inode**.
+
+Zum Beispiel:
+
+```text
+inode 12345:
+  owner = dev
+  group = shared_group
+  mode = 000
+  size = 40
+  timestamps = ...
+```
+
+Und der Dateiinhalt liegt wieder woanders.
+
+---
+
+# 2. Was macht `ls` eigentlich?
+
+Viele denken:
+
+> `ls` liest einfach Dateien.
+
+Nein 😄
+
+`ls -la dir` macht mehrere Syscalls.
+
+Grob:
+
+## Schritt 1 — Directory öffnen
+
+```c
+open("dir")
+```
+
+oder intern moderner:
+
+```c
+openat()
+```
+
+Dafür braucht man:
+
+> **`x` auf Parent-Pfaden**
+
+---
+
+## Schritt 2 — Directory-Einträge lesen
+
+Dann:
+
+```c
+readdir()
+```
+
+oder Kernel:
+
+```c
+getdents64()
+```
+
+Hier werden nur die Namen gelesen:
+
+```text
+.
+..
+config.json
+secret.key
+```
+
+Dafür braucht man:
+
+> **`r` auf dem Directory**
+
+Das ist dein:
+
+```text
+400
+```
+
+Fall.
+
+Darum siehst du:
+
+```text
+config.json
+```
+
+überhaupt.
+
+---
+
+## Schritt 3 — Für jedes File `stat()`
+
+Jetzt will `ls -l` diese Infos:
+
+```text
+-rw-r--r--
+dev shared_group
+40 bytes
+timestamp
+```
+
+Die stehen **nicht im Directory**.
+
+Also macht `ls` für **jeden Eintrag**:
+
+```c
+stat("dir/config.json")
+```
+
+oder:
+
+```c
+lstat()
+```
+
+Das bedeutet:
+
+> Pfad auflösen!
+
+Und dafür braucht man:
+
+> **`x` auf dem Directory**
+
+---
+
+# Warum sieht man `????????`
+
+Jetzt wird klar, was du gesehen hast:
+
+Bei:
+
+```text
+400
+r--
+```
+
+passiert:
+
+### `readdir()`
+
+✅ klappt
+
+Du bekommst:
+
+```text
+config.json
+```
+
+### `stat(dir/config.json)`
+
+❌ scheitert
+
+wegen fehlendem `x`
+
+Darum:
+
+```text
+-?????????
+? ? ? ?
+config.json
+```
+
+`ls` kennt den Namen, kann aber die Metadaten nicht holen.
+
+---
+
+# 3. Was bedeutet `x` technisch?
+
+Viele denken:
+
+> execute = ausführen
+
+Bei Directories ist das falsch.
+
+Bei Directories bedeutet:
+
+> **search / traversal permission**
+
+Der Kernel darf:
+
+```text
+dir/config.json
+```
+
+auflösen.
+
+Das heißt:
+
+```c
+lookup("config.json")
+```
+
+im Directory.
+
+---
+
+# 4. Warum funktioniert `cat dir/config.json` mit `100`?
+
+Beispiel:
+
+Directory:
+
+```text
+100
+--x
+```
+
+File:
+
+```text
+444
+r--r--r--
+```
+
+Dann:
+
+```bash
+cat dir/config.json
+```
+
+Kernel macht:
+
+## Pfadauflösung
+
+```text
+dir
+└── config.json
+```
+
+Das braucht:
+
+> `x` auf `dir`
+
+Hast du.
+
+---
+
+## File öffnen
+
+Dann:
+
+```c
+open("dir/config.json")
+```
+
+Jetzt wird geprüft:
+
+> hat User `r` auf File?
+
+Ja.
+
+Also:
+
+✅ klappt.
+
+---
+
+## Warum geht `ls dir` trotzdem nicht?
+
+Weil `ls` zuerst:
+
+```c
+readdir()
+```
+
+machen muss.
+
+Und dafür braucht es:
+
+> `r` auf dem Directory
+
+Fehlt.
+
+Also:
+
+❌ denied
+
+---
+
+# 5. `300` wird besonders spannend
+
+```text
+-wx
+```
+
+Kein `r`, aber `w+x`.
+
+Jetzt:
+
+```bash
+ls dir
+```
+
+❌ denied
+
+Aber:
+
+```bash
+rm dir/config.json
+```
+
+kann funktionieren.
+
+Warum?
+
+`rm` braucht nicht `readdir()`.
+
+Es macht:
+
+```c
+unlink("dir/config.json")
+```
+
+Wenn der Name bekannt ist.
+
+Kernel prüft:
+
+* `x` → darf Pfad auflösen?
+* `w` → darf Directory geändert werden?
+
+Ja.
+
+Dann:
+
+✅ delete
+
+---
+
+# 6. Was ist im Directory selbst lesbar?
+
+Bei `r` liest du technisch:
+
+```text
+config.json
+secret.key
+backup.zip
+```
+
+Also:
+
+> die **Namensliste**
+
+Nicht:
+
+* owner
+* permissions
+* timestamps
+* size
+
+Denn dafür braucht man:
+
+```c
+stat()
+```
+
+auf jedem Eintrag.
+
+---
+
+# Mentales Modell
+
+Ich würde es so merken:
+
+### `r` auf Directory
+
+> Ich darf die Namensliste lesen
+
+(`readdir()`)
+
+---
+
+### `x` auf Directory
+
+> Ich darf bekannte Namen auflösen
+
+(`lookup`, `stat`, `open`)
+
+---
+
+### `w+x`
+
+> Ich darf Namen ändern
+
+(`unlink`, `rename`, `create`)
+
+---
+
+# Deine Beobachtung eingeordnet
+
+Du hattest:
+
+```text
+600 / 400
+```
+
+und dachtest:
+
+> „Ich kann trotzdem Inhalte auslesen?“
+
+Fast 🙂
+
+Genauer:
+
+> Du kannst **Namen sehen**, aber keine Inode-Metadaten lesen.
+
+Die eigentlichen Inhalte der Datei bleiben gesperrt.
+
+Das `????????` ist genau der Hinweis:
+
+> `stat()` ist fehlgeschlagen.
+
+---
+
+# Sicherheitsrelevanz
+
+Das ergibt drei interessante Klassen:
+
+### `400`
+
+```text
+r--
+```
+
+> **Information leakage**
+
+Dateinamen sichtbar.
+
+---
+
+### `100`
+
+```text
+--x
+```
+
+> **Blind access**
+
+Keine Namen sichtbar, aber bekannte Dateien nutzbar.
+
+---
+
+### `300`
+
+```text
+-wx
+```
+
+> **Blind modification**
+
+Keine Namen sichtbar, aber bekannte Dateien manipulierbar.
+
+Das ist oft die gefährlichste Kategorie.
+
+
+

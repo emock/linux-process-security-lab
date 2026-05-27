@@ -18,4 +18,9 @@ sudo chown dev:dev /home/dev/*.json
 
 
 
-sudo ./cleanup.sh
+#############################
+# Cleanup Directories
+#############################
+
+sudo rm -rf /tmp/lab-03*
+sudo rm -rf /tmp/*.py
