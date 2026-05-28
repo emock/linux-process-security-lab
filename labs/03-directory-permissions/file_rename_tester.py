@@ -64,9 +64,9 @@ def test_list_access(operation: str):
     write_records("/tmp/", report_file, records)
 
 
-# test_list_access("r")
+test_list_access("r")
 test_list_access("x")
-# test_access("a")
+
 
 # terminal output
 print(f"{'USER':15} {'FILE':60} {'OP':8} RESULT")

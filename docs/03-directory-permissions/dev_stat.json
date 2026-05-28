@@ -54,5 +54,61 @@
     "file": "/tmp/lab-03-s8-000/config.json",
     "operation": "list",
     "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s1-700/",
+    "file": "/tmp/lab-03-s1-700/config.json",
+    "operation": "stat",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s2-600/",
+    "file": "/tmp/lab-03-s2-600/config.json",
+    "operation": "stat",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s3-500/",
+    "file": "/tmp/lab-03-s3-500/config.json",
+    "operation": "stat",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s4-400/",
+    "file": "/tmp/lab-03-s4-400/config.json",
+    "operation": "stat",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s5-300/",
+    "file": "/tmp/lab-03-s5-300/config.json",
+    "operation": "stat",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s6-200/",
+    "file": "/tmp/lab-03-s6-200/config.json",
+    "operation": "stat",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s7-100/",
+    "file": "/tmp/lab-03-s7-100/config.json",
+    "operation": "stat",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s8-000/",
+    "file": "/tmp/lab-03-s8-000/config.json",
+    "operation": "stat",
+    "allowed": false
   }
 ]

@@ -297,7 +297,172 @@ The inode reference is conceptually available from the directory entry. However,
 
 ## Write Results
 
----
+| Scenario            | File                            | dev   |
+|:--------------------|:--------------------------------|:------|
+| /tmp/lab-03-s1-700/ | /tmp/lab-03-s1-700/<targetfile> | X     |
+| /tmp/lab-03-s2-600/ | /tmp/lab-03-s2-600/<targetfile>  | N     |
+| /tmp/lab-03-s3-500/ | /tmp/lab-03-s3-500/<targetfile>  | N     |
+| /tmp/lab-03-s4-400/ | /tmp/lab-03-s4-400/<targetfile>  | N     |
+| /tmp/lab-03-s5-300/ | /tmp/lab-03-s5-300/<targetfile>  | X     |
+| /tmp/lab-03-s6-200/ | /tmp/lab-03-s6-200/<targetfile>  | N     |
+| /tmp/lab-03-s7-100/ | /tmp/lab-03-s7-100/<targetfile>  | N     |
+| /tmp/lab-03-s8-000/ | /tmp/lab-03-s8-000/<targetfile>  | N     |
+
+
+Before:
+```commandline
+dev@dev:/tmp/lab-03-s1-700$ ls
+config.json delete.json rename_src.json
+
+```
+
+After:
+
+```commandline
+dev@dev:/tmp/lab-03-s1-700$ ls
+config.json  create.json  rename_dst.json
+
+
+```
+
+Detail:
+
+```commandline
+root@dev:/tmp/lab-03-s2-600# ls
+config.json  delete.json  rename_src.json
+
+root@dev:/tmp/lab-03-s3-500# ls
+config.json  delete.json  rename_src.json
+
+root@dev:/tmp/lab-03-s4-400# ls
+config.json  delete.json  rename_src.json
+
+root@dev:/tmp/lab-03-s5-300# ls
+config.json  create.json  rename_dst.json
+
+root@dev:/tmp/lab-03-s6-200# ls
+config.json  delete.json  rename_src.json
+
+root@dev:/tmp/lab-03-s7-100# ls
+config.json  delete.json  rename_src.json
+
+root@dev:/tmp/lab-03-s8-000# ls
+config.json  delete.json  rename_src.json
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Detailed Results
+
+| Scenario            | File                           | dev   |
+|:--------------------|:-------------------------------|:------|
+| /tmp/lab-03-s1-700/ | /tmp/lab-03-s1-700/create.json | X     |
+| /tmp/lab-03-s2-600/ | /tmp/lab-03-s2-600/create.json | N     |
+| /tmp/lab-03-s3-500/ | /tmp/lab-03-s3-500/create.json | N     |
+| /tmp/lab-03-s4-400/ | /tmp/lab-03-s4-400/create.json | N     |
+| /tmp/lab-03-s5-300/ | /tmp/lab-03-s5-300/create.json | X     |
+| /tmp/lab-03-s6-200/ | /tmp/lab-03-s6-200/create.json | N     |
+| /tmp/lab-03-s7-100/ | /tmp/lab-03-s7-100/create.json | N     |
+| /tmp/lab-03-s8-000/ | /tmp/lab-03-s8-000/create.json | N     |
+
+
+
+| Scenario            | File                               | dev   |
+|:--------------------|:-----------------------------------|:------|
+| /tmp/lab-03-s1-700/ | /tmp/lab-03-s1-700/rename_src.json | X     |
+| /tmp/lab-03-s2-600/ | /tmp/lab-03-s2-600/rename_src.json | N     |
+| /tmp/lab-03-s3-500/ | /tmp/lab-03-s3-500/rename_src.json | N     |
+| /tmp/lab-03-s4-400/ | /tmp/lab-03-s4-400/rename_src.json | N     |
+| /tmp/lab-03-s5-300/ | /tmp/lab-03-s5-300/rename_src.json | X     |
+| /tmp/lab-03-s6-200/ | /tmp/lab-03-s6-200/rename_src.json | N     |
+| /tmp/lab-03-s7-100/ | /tmp/lab-03-s7-100/rename_src.json | N     |
+| /tmp/lab-03-s8-000/ | /tmp/lab-03-s8-000/rename_src.json | N     |
+
+
+| Scenario            | File                           | dev   |
+|:--------------------|:-------------------------------|:------|
+| /tmp/lab-03-s1-700/ | /tmp/lab-03-s1-700/delete.json | X     |
+| /tmp/lab-03-s2-600/ | /tmp/lab-03-s2-600/delete.json | N     |
+| /tmp/lab-03-s3-500/ | /tmp/lab-03-s3-500/delete.json | N     |
+| /tmp/lab-03-s4-400/ | /tmp/lab-03-s4-400/delete.json | N     |
+| /tmp/lab-03-s5-300/ | /tmp/lab-03-s5-300/delete.json | X     |
+| /tmp/lab-03-s6-200/ | /tmp/lab-03-s6-200/delete.json | N     |
+| /tmp/lab-03-s7-100/ | /tmp/lab-03-s7-100/delete.json | N     |
+| /tmp/lab-03-s8-000/ | /tmp/lab-03-s8-000/delete.json | N     |
+
+
+
+
+
+Create Beispiel:
+
+
+touch dir/newfile
+
+
+resolve("dir")
+↓
+check x permission
+↓
+modify directory entries
+↓
+insert:
+newfile -> inode 789
+
+
+
+
+Delete
+
+resolve("dir")
+↓
+resolve("config.json")
+↓
+remove entry
+
+
+w in Unix:
+If I can reach the namespace, I may mutate it.
+
+300
+-wx
+
+ist der echte Write-Fall.
+
+Das ist übrigens genau analog zu deinem Read-Modell:
+
+400
+r--
+
+sehen
+
+aber nicht benutzen
+
+Und jetzt kommt der Mindfuck 😄
+
+200 ist in Unix fast immer:
+
+misconfiguration smell
+
+weil:
+
+write without search
+
+praktisch kaum sinnvoll ist.
+
 
 ### `300`
 

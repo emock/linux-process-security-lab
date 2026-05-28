@@ -1,0 +1,114 @@
+[
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s1-700/",
+    "file": "/tmp/lab-03-s1-700/create.json",
+    "operation": "create",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s2-600/",
+    "file": "/tmp/lab-03-s2-600/create.json",
+    "operation": "create",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s3-500/",
+    "file": "/tmp/lab-03-s3-500/create.json",
+    "operation": "create",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s4-400/",
+    "file": "/tmp/lab-03-s4-400/create.json",
+    "operation": "create",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s5-300/",
+    "file": "/tmp/lab-03-s5-300/create.json",
+    "operation": "create",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s6-200/",
+    "file": "/tmp/lab-03-s6-200/create.json",
+    "operation": "create",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s7-100/",
+    "file": "/tmp/lab-03-s7-100/create.json",
+    "operation": "create",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s8-000/",
+    "file": "/tmp/lab-03-s8-000/create.json",
+    "operation": "create",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s1-700/",
+    "file": "/tmp/lab-03-s1-700/rename_src.json",
+    "operation": "rename",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s2-600/",
+    "file": "/tmp/lab-03-s2-600/rename_src.json",
+    "operation": "rename",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s3-500/",
+    "file": "/tmp/lab-03-s3-500/rename_src.json",
+    "operation": "rename",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s4-400/",
+    "file": "/tmp/lab-03-s4-400/rename_src.json",
+    "operation": "rename",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s5-300/",
+    "file": "/tmp/lab-03-s5-300/rename_src.json",
+    "operation": "rename",
+    "allowed": true
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s6-200/",
+    "file": "/tmp/lab-03-s6-200/rename_src.json",
+    "operation": "rename",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s7-100/",
+    "file": "/tmp/lab-03-s7-100/rename_src.json",
+    "operation": "rename",
+    "allowed": false
+  },
+  {
+    "user": "dev",
+    "scenario": "/tmp/lab-03-s8-000/",
+    "file": "/tmp/lab-03-s8-000/rename_src.json",
+    "operation": "rename",
+    "allowed": false
+  }
+]

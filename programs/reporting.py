@@ -1,11 +1,11 @@
 import pandas as pd
 from pathlib import Path
 
-OPERATION = "read"
+OPERATION = "create"
 OTAG = "X"
 
 # Directory mit JSON Ergebnissen
-result_dir = Path("docs/02-file-permissions")
+result_dir = Path("docs/03-directory-permissions")
 
 
 

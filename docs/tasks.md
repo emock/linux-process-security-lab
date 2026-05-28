@@ -7,7 +7,8 @@
 
 # lab-03-directory-permissions
 - [x] Proof Read Permission Read and Execute incl. technical details!
-- [ ] Implement rename/delete
+- [x] Implement rename/delete
+- Add READUP for Write operations
 
     
 # lab-05-dbus

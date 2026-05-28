@@ -34,6 +34,7 @@ fi
 #############################
 
 cp "$SCRIPT_DIR/file_rename_tester.py" "/tmp/"
+cp "$SCRIPT_DIR/file_write_tester.py" "/tmp/"
 cp "$SCRIPT_DIR/common.py" "/tmp/"
 
 
@@ -41,28 +42,44 @@ cp "$SCRIPT_DIR/common.py" "/tmp/"
 
 mkdir -p "$TARGET_DIR1"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR1/config.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR1/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR1/delete.json"
 
 mkdir -p "$TARGET_DIR2"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR2/config.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR2/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR2/delete.json"
 
 mkdir -p "$TARGET_DIR3"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR3/config.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR3/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR3/delete.json"
 
 mkdir -p "$TARGET_DIR4"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR4/config.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR4/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR4/delete.json"
 
 mkdir -p "$TARGET_DIR5"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR5/config.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR5/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR5/delete.json"
 
 mkdir -p "$TARGET_DIR6"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR6/config.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR6/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR6/delete.json"
 
 mkdir -p "$TARGET_DIR7"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR7/config.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR7/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR7/delete.json"
+
 
 mkdir -p "$TARGET_DIR8"
 cp "$SCRIPT_DIR/config.json" "$TARGET_DIR8/config.json"
-
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR8/rename_src.json"
+cp "$SCRIPT_DIR/config.json" "$TARGET_DIR8/delete.json"
 
 
 sudo chown -R dev:shared_group /tmp/lab-03-s*
