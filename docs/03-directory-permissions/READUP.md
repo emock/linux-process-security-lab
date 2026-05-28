@@ -5,6 +5,8 @@
 
 ## Technical Background
 
+
+### Directory Basics 
 A directory in Unix is a table of names and inode references, best illustrated by 
 ls -ai.
 
@@ -16,18 +18,33 @@ dev@dev:/tmp/lab-03-s1-700$ ls -ai
 262507 second
 ```
 
-This shows the automatically generated entries self (.) and parent (..) as well as the 
-child nodes of a directory.
+This shows the special directory entries self (.) and parent (..) as well as the 
+child entries of a directory.
 In this case a second file with a different name has been created pointing to the same inode
 as config.json.
 The directory structure lists this as a separate item.
 
+The directory permissions answer the question:
+> **Can I find/use names?**
+
+### Read Permission
 The **Unix Read Permission (r)** on a directory grants access to read this table.
 As a general rule of thumb, using tab complete in a terminal on directory with active
 read permission will work.
 
 The metadata of the file, such as group, owner, file size are stored in the referenced Inode.
-The Execute permission (x) facilitates a lookup/path traversal of this inode.
+
+### Execute Permission
+
+The Execute permission (x) on a directory facilitates a lookup/path traversal of known directory entries
+and traverse the path to the target file.
+Without Execute permission (x) on the directory, these entries cannot be resolved/looked up, meaning the referenced
+inode cannot practically be used (e.g., via stat(), open(), cat()).
+
+>**Important:**
+>>**Even if a file is globally readable/writable/executable, it is not accessible unless Execute permission (`x`) is granted
+on all parent directories required for pathname traversal.**
+
 
 stat() is used here as a practical demonstration of this behavior.
 
@@ -54,8 +71,7 @@ return metadata
 
 ```
 
-This is why the Execute permission is needed on a directory: To resolve/lookup child-inodes
-and traverse the path to the target file.
+
 
 
 
@@ -72,7 +88,7 @@ Change: 2026-05-27 08:13:36.329713579 +0000
 ```
 
 This provides the attributes which are commonly of interest for each entry, such as 
-size, owner, group and creation date.
+size, owner, group and timestamps.
 
 Using the common ls -lai switch additionally performs a stat(() on each entry of the
 directory. This shows the retrieval of the file metadata.
@@ -119,32 +135,29 @@ config.json 263431
 
 ### Security Considerations
 
+**Information leakage**: Child entries of directory visible 
+
 Having read permissions on a directory facilitates information disclosure about the names 
 of the files in the directory.
-No further metadata, such as permissions, owner or size can be obtained.
+No further metadata of a file, such as permissions, owner or size can be obtained.
 
-Generally speaking, this is what would be expected.
 
 
 
 ## Results Execute
 
-Modelling the Execute bit must be done with a file within the directory.
-This is due to the fact that technically a reader first gets the file list of the directory and 
-then tries to call a stat() on the file.
-Exactly this stat() call is governed by the execute bit, i.e. is a caller allowed to 
-perform actions in this directory
+The following table provides an overview of the results.
 
-|USER |           FILE     |                                                    OP |  RESULT|
-|------|--------------------|-----------------------------------------------------|---------------------|
-|dev |/tmp/lab-03-s1-700/config.json |stat |X|
-|dev |/tmp/lab-03-s2-600/config.json |stat |N|
-|dev |/tmp/lab-03-s3-500/config.json |stat |X|
-|dev |/tmp/lab-03-s4-400/config.json |stat |N|
-|dev |/tmp/lab-03-s5-300/config.json |stat |X|
-|dev |/tmp/lab-03-s6-200/config.json |stat |N|
-|dev |/tmp/lab-03-s7-100/config.json |stat |X|
-|dev |/tmp/lab-03-s8-000/config.json |stat |N|
+| USER | FILE                           | OP   | RESULT       |
+|------|--------------------------------|------|--------------|
+| dev  | /tmp/lab-03-s1-700/config.json | stat | X            |
+| dev  | /tmp/lab-03-s2-600/config.json | stat | N            |
+| dev  | /tmp/lab-03-s3-500/config.json | stat | X            |
+| dev  | /tmp/lab-03-s4-400/config.json | stat | N            |
+| dev  | /tmp/lab-03-s5-300/config.json | stat | X            |
+| dev  | /tmp/lab-03-s6-200/config.json | stat | N            |
+| dev  | /tmp/lab-03-s7-100/config.json | stat | X            |
+| dev  | /tmp/lab-03-s8-000/config.json | stat | N            |
 
 ```commandline
 
@@ -162,10 +175,73 @@ stat: cannot statx 'lab-03-s4-400/config.json': Permission denied
 
 ```
 
+### Security Considerations
+
+**Blind Access:** Names not visible, but known names usable
+
+### Security Considerations
+
+**Blind Access:** Names not visible, but known names usable
+
+Test cases `/tmp/lab-03-s7-100/config.json` and `/tmp/lab-03-s5-300/config.json` demonstrate an important aspect of Unix
+directory semantics: directory listing and file access are intentionally treated as separate concerns.
+
+At first glance, the result may appear counter-intuitive: although directory listing fails, `stat()` executes
+successfully.
+
+This behavior is intentional by design.
+
+In Unix, the Read permission (`r`) on a directory controls whether directory entries (names) can be enumerated. The
+Execute permission (`x`) acts as **search/traversal permission** and determines whether already known directory entries
+can be resolved during pathname traversal.
+
+As a consequence, the absence of Read permission does **not** imply that files inside the directory are inaccessible.
+
+If the filename is already known or can be guessed (e.g., `config.json`, `backup.zip`, `secret.txt`), traversal remains
+possible as long as Execute permission (`x`) is present on the directory.
+
+This enables operations such as:
+
+* `stat()` to retrieve metadata
+* `open()` to access file handles
+* `cat()` to read file contents
+
+provided the permissions of the referenced file allow the operation.
+
+This design reflects a fundamental Unix principle:
+
+> **Enumerating names and accessing known names are separate privileges.**
+
+Consequently, directory confidentiality and file confidentiality should be treated as separate security concerns.
+Preventing directory listing alone does not necessarily prevent access to files within the directory.
+
+
+An equally important observation is the inverse case: missing Execute permission (`x`) on a directory acts as an
+effective access barrier.
+
+Even if files inside the directory are globally readable, writable or executable, they remain inaccessible if pathname
+traversal fails due to missing Execute permission on the parent directory.
+
+This highlights an important Unix principle:
+
+> **File permissions alone do not determine accessibility — successful pathname traversal is required first.**
+
+Common permission pattern in practice are:
+- 711: Known entries are usable
+- 750: Group can read and use entries
+
 
 ## Combining Read and Execute
 
-The command ls -ali gives an impression which capabilities are available with both r+x set.
+The command ls -ali gives an impression which capabilities are available.
+It should be noted that while __ls__ appears to be an atomic operation it is a sequence of operations,
+such as read(), permission checks and stat().
+
+
+
+
+
+
 
 ```commandline
 
@@ -206,512 +282,20 @@ ls: cannot open directory 'lab-03-s8-000': Permission denied
 
 ```
 
+Interesting observations, summarized from above:
 
+- **Blind Traversal:** s5-300 and s7-100 suggest that no access is possible: 
+However as shown above, **if** the contents of the directory are already known or easily guessable, traversable and information retrievable is possible.
+- s4-400 and s2-600:
+The inode reference is conceptually available from the directory entry. However, GNU ls chooses not to expose it
+  without successful path resolution, resulting in ? despite read access to the directory.
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Ja — das lohnt sich wirklich sauber zu verstehen, weil Unix-Directories an der Stelle unintuitiv sind.
-
-Der Kern ist:
-
-> Ein Directory ist unter Unix **keine „Mappe“**, sondern technisch eine **Tabelle von Namen → Inode-Referenzen**.
-
-Und `r`, `w`, `x` wirken auf **verschiedene Operationen auf dieser Tabelle**.
-
----
-
-# 1. Was steckt technisch in einem Directory?
-
-Ein Directory enthält vereinfacht:
-
-```text
-name        inode
--------------------
-config.json 12345
-secret.key  12346
-logs        12347
-```
-
-Also:
-
-> **Dateiname → Verweis auf Inode**
-
-Nicht den Dateiinhalt.
-
-Die eigentlichen Metadaten liegen im **Inode**.
-
-Zum Beispiel:
-
-```text
-inode 12345:
-  owner = dev
-  group = shared_group
-  mode = 000
-  size = 40
-  timestamps = ...
-```
-
-Und der Dateiinhalt liegt wieder woanders.
-
----
-
-# 2. Was macht `ls` eigentlich?
-
-Viele denken:
-
-> `ls` liest einfach Dateien.
-
-Nein 😄
-
-`ls -la dir` macht mehrere Syscalls.
-
-Grob:
-
-## Schritt 1 — Directory öffnen
-
-```c
-open("dir")
-```
-
-oder intern moderner:
-
-```c
-openat()
-```
-
-Dafür braucht man:
-
-> **`x` auf Parent-Pfaden**
-
----
-
-## Schritt 2 — Directory-Einträge lesen
-
-Dann:
-
-```c
-readdir()
-```
-
-oder Kernel:
-
-```c
-getdents64()
-```
-
-Hier werden nur die Namen gelesen:
-
-```text
-.
-..
-config.json
-secret.key
-```
-
-Dafür braucht man:
-
-> **`r` auf dem Directory**
-
-Das ist dein:
-
-```text
-400
-```
-
-Fall.
-
-Darum siehst du:
-
-```text
-config.json
-```
-
-überhaupt.
-
----
-
-## Schritt 3 — Für jedes File `stat()`
-
-Jetzt will `ls -l` diese Infos:
-
-```text
--rw-r--r--
-dev shared_group
-40 bytes
-timestamp
-```
-
-Die stehen **nicht im Directory**.
-
-Also macht `ls` für **jeden Eintrag**:
-
-```c
-stat("dir/config.json")
-```
-
-oder:
-
-```c
-lstat()
-```
-
-Das bedeutet:
-
-> Pfad auflösen!
-
-Und dafür braucht man:
-
-> **`x` auf dem Directory**
-
----
-
-# Warum sieht man `????????`
-
-Jetzt wird klar, was du gesehen hast:
-
-Bei:
-
-```text
-400
-r--
-```
-
-passiert:
-
-### `readdir()`
-
-✅ klappt
-
-Du bekommst:
-
-```text
-config.json
-```
-
-### `stat(dir/config.json)`
-
-❌ scheitert
-
-wegen fehlendem `x`
-
-Darum:
-
-```text
--?????????
-? ? ? ?
-config.json
-```
-
-`ls` kennt den Namen, kann aber die Metadaten nicht holen.
-
----
-
-# 3. Was bedeutet `x` technisch?
-
-Viele denken:
-
-> execute = ausführen
-
-Bei Directories ist das falsch.
-
-Bei Directories bedeutet:
-
-> **search / traversal permission**
-
-Der Kernel darf:
-
-```text
-dir/config.json
-```
-
-auflösen.
-
-Das heißt:
-
-```c
-lookup("config.json")
-```
-
-im Directory.
-
----
-
-# 4. Warum funktioniert `cat dir/config.json` mit `100`?
-
-Beispiel:
-
-Directory:
-
-```text
-100
---x
-```
-
-File:
-
-```text
-444
-r--r--r--
-```
-
-Dann:
-
-```bash
-cat dir/config.json
-```
-
-Kernel macht:
-
-## Pfadauflösung
-
-```text
-dir
-└── config.json
-```
-
-Das braucht:
-
-> `x` auf `dir`
-
-Hast du.
-
----
-
-## File öffnen
-
-Dann:
-
-```c
-open("dir/config.json")
-```
-
-Jetzt wird geprüft:
-
-> hat User `r` auf File?
-
-Ja.
-
-Also:
-
-✅ klappt.
-
----
-
-## Warum geht `ls dir` trotzdem nicht?
-
-Weil `ls` zuerst:
-
-```c
-readdir()
-```
-
-machen muss.
-
-Und dafür braucht es:
-
-> `r` auf dem Directory
-
-Fehlt.
-
-Also:
-
-❌ denied
-
----
-
-# 5. `300` wird besonders spannend
-
-```text
--wx
-```
-
-Kein `r`, aber `w+x`.
-
-Jetzt:
-
-```bash
-ls dir
-```
-
-❌ denied
-
-Aber:
-
-```bash
-rm dir/config.json
-```
-
-kann funktionieren.
-
-Warum?
-
-`rm` braucht nicht `readdir()`.
-
-Es macht:
-
-```c
-unlink("dir/config.json")
-```
-
-Wenn der Name bekannt ist.
-
-Kernel prüft:
-
-* `x` → darf Pfad auflösen?
-* `w` → darf Directory geändert werden?
-
-Ja.
-
-Dann:
-
-✅ delete
-
----
-
-# 6. Was ist im Directory selbst lesbar?
-
-Bei `r` liest du technisch:
-
-```text
-config.json
-secret.key
-backup.zip
-```
-
-Also:
-
-> die **Namensliste**
-
-Nicht:
-
-* owner
-* permissions
-* timestamps
-* size
-
-Denn dafür braucht man:
-
-```c
-stat()
-```
-
-auf jedem Eintrag.
-
----
-
-# Mentales Modell
-
-Ich würde es so merken:
-
-### `r` auf Directory
-
-> Ich darf die Namensliste lesen
-
-(`readdir()`)
-
----
-
-### `x` auf Directory
-
-> Ich darf bekannte Namen auflösen
-
-(`lookup`, `stat`, `open`)
-
----
-
-### `w+x`
-
-> Ich darf Namen ändern
-
-(`unlink`, `rename`, `create`)
-
----
-
-# Deine Beobachtung eingeordnet
-
-Du hattest:
-
-```text
-600 / 400
-```
-
-und dachtest:
-
-> „Ich kann trotzdem Inhalte auslesen?“
-
-Fast 🙂
-
-Genauer:
-
-> Du kannst **Namen sehen**, aber keine Inode-Metadaten lesen.
-
-Die eigentlichen Inhalte der Datei bleiben gesperrt.
-
-Das `????????` ist genau der Hinweis:
-
-> `stat()` ist fehlgeschlagen.
-
----
-
-# Sicherheitsrelevanz
-
-Das ergibt drei interessante Klassen:
-
-### `400`
-
-```text
-r--
-```
-
-> **Information leakage**
-
-Dateinamen sichtbar.
-
----
-
-### `100`
-
-```text
---x
-```
-
-> **Blind access**
-
-Keine Namen sichtbar, aber bekannte Dateien nutzbar.
+## Write Results
 
 ---
 
@@ -721,11 +305,33 @@ Keine Namen sichtbar, aber bekannte Dateien nutzbar.
 -wx
 ```
 
-> **Blind modification**
 
-Keine Namen sichtbar, aber bekannte Dateien manipulierbar.
-
-Das ist oft die gefährlichste Kategorie.
+### Security Considerations
 
 
+
+
+**Blind modification**: Names not visible, but known names changeable (wx)
+
+
+
+
+
+
+
+## Summary of Security Considerations
+
+- Read Access on a directory facilitates information disclosure of file names
+
+- Not granting Execute bit on a directory acts as a hard stop and prevents using of files for entities
+
+Patterns: 
+- 750:
+  - Other: no access to files in the directory, irregardless of the file permission
+- 710: 
+  - Other: same as 750
+  - Group:  no directory listing possible - no further reconnaissance.
+- 700: 
+  - Other/Group: Hard stop for group and others 
+    
 

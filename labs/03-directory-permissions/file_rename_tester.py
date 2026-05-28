@@ -51,6 +51,7 @@ def test_list_access(operation: str):
                 elif otag == "stat":
                     # Execute stat() on a **KNOWN** file in the target directory
                     entries = os.stat(file)
+                    print(entries)
 
                 records.append(
                     AccessRecord(user=current_user, scenario=p, file=file, operation=otag, allowed=True))
@@ -63,8 +64,8 @@ def test_list_access(operation: str):
     write_records("/tmp/", report_file, records)
 
 
-test_list_access("r")
-# test_list_access("x")
+# test_list_access("r")
+test_list_access("x")
 # test_access("a")
 
 # terminal output
