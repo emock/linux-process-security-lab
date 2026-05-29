@@ -3,6 +3,25 @@
 # Overview
 
 
+
+## Overview of Syscalls
+
+| Operation   | Syscall               |
+| ----------- | --------------------- |
+| stat        | `statx`, `newfstatat` |
+| create/open | `openat`              |
+| rename      | `renameat2`           |
+| delete      | `unlinkat`            |
+| mkdir       | `mkdirat`             |
+
+
+strace -e trace=file python3 test.py 2>&1 | grep openat
+
+Options:
+strace outputs by default on STDERR - using 2>&1 we can redirect it to STDOUT and use grep with coloring.
+The parameters -e (only relevant syscalls) and -f (no follow children) help to reduce the scope to 
+filesystem scope.
+
 ## Technical Background
 
 
@@ -24,11 +43,23 @@ In this case a second file with a different name has been created pointing to th
 as config.json.
 The directory structure lists this as a separate item.
 
-The directory permissions answer the question:
-> **Can I find/use names?**
+A central observation is that directory permissions and file permissions protect different concerns:
+
+- directories control visibility, traversal and modification of names
+- files control access to file contents
+
 
 ### Read Permission
-The **Unix Read Permission (r)** on a directory grants access to read this table.
+The **Unix Read Permission (r)** on a directory grants access to read the file descriptor table.
+
+```commandline
+root@dev:/tmp# ls -ai lab-03-s7-100/
+269903 .
+131074 ..
+269930 config.json
+269981 delete.json
+269962 rename_src.json
+```
 As a general rule of thumb, using tab complete in a terminal on directory with active
 read permission will work.
 
@@ -105,6 +136,91 @@ total 16
 ```
 
 Consequently, in order to resolve metadata the name of the file is required as a prerequisite. 
+
+
+### Write Permission
+
+The directory write permission in Unix may be summarized as 
+
+> If I can reach the namespace, I **may** mutate it.
+
+In contrast to file write permissions, directory write permissions do not control file content 
+modification. Instead, they control changes to the directory namespace, i.e., the mapping of file names
+to inodes.
+
+In practice, directory write permission in combination with Execute (wx) facilitates the
+following operations:
+- Creation of new files
+- Renaming of existing files
+- Deletion of files
+
+The following section explores, why the execute bit is needed for proper functioning.
+
+Let's first illustrate what happens behind the scenes in each of these cases:
+
+
+Create using **touch dir/newfile**
+
+```commandline
+resolve("dir")
+↓
+check x permission
+↓
+check w permission
+↓
+modify directory entries
+↓
+insert:
+newfile -> inode 789
+↓
+return
+```
+
+Rename using `mv dir/old dir/new`
+
+```commandline
+resolve parent dir
+↓
+check x permission
+↓
+check w permission
+↓
+resolve "old" entry
+↓
+create/update:
+new -> inode 123
+↓
+remove:
+old -> inode 123
+↓
+same inode remains referenced
+↓
+return
+```
+
+During a rename operation the inode itself remains unchanged. Only the directory entry (name → inode mapping) is
+modified.
+
+Delete using `rm dir/config.json`
+
+```commandline
+resolve("dir")
+↓
+check x permission
+↓
+check w permission
+↓
+resolve("config.json")
+↓
+remove entry
+↓
+return
+```
+
+As can be seen in all the write operation scenarios multiple `resolve()` steps are involved.
+For this to succeed the execute permission needs to be set in the directory.
+This explains why  `wx` facilitates write operations and while write-only `w` does not work.
+
 
 ## Results Read
 
@@ -295,7 +411,7 @@ The inode reference is conceptually available from the directory entry. However,
 
 
 
-## Write Results
+## Results Write
 
 | Scenario            | File                            | dev   |
 |:--------------------|:--------------------------------|:------|
@@ -316,7 +432,7 @@ config.json delete.json rename_src.json
 
 ```
 
-After:
+In case write operation is successfull the target directory is modified as follows:
 
 ```commandline
 dev@dev:/tmp/lab-03-s1-700$ ls
@@ -325,7 +441,133 @@ config.json  create.json  rename_dst.json
 
 ```
 
-Detail:
+
+### Security Considerations
+
+**Blind modification**: s5-300 shows that while file names are not visible, creation of new files as well as
+deletion and renaming of known names is possible.
+
+**Legitimate use cases:**
+Blind modification patterns (`733`, `730`, `300`) are uncommon but not inherently insecure.
+
+Historically, such permission models have been used for **drop-box style directories**, where entities may create files
+without being able to enumerate or inspect existing directory contents.
+
+Typical examples include:
+
+* mail spools
+* upload/drop folders
+* print queues
+* temporary job submission directories
+
+The underlying design principle is:
+
+> **Write permitted, reconnaissance restricted.**
+
+In modern systems these patterns are less common and should therefore be reviewed carefully to distinguish intentional
+security design from accidental over-permissioning.
+
+## Summary of Security Considerations
+
+### Information Disclosure (Directory Enumeration)
+
+Granting Read permission (`r`) on a directory enables enumeration of directory entries (file names).
+
+This may facilitate information disclosure if file names reveal implementation details, configuration names or
+predictable targets.
+
+Typical patterns:
+
+* `744` / `740`
+
+  * Group/Other may enumerate file names.
+* `766` / `760`
+
+  * Same as above, additionally combined with write capabilities.
+
+Impact:
+
+* Usually **Low / Informational**
+* Security relevance increases when file names are sensitive or predictable.
+
+---
+
+### Traversal Barrier (Path Resolution Protection)
+
+Missing Execute permission (`x`) on a directory acts as an effective access barrier.
+
+Even if files inside the directory are globally readable, writable or executable, they remain inaccessible when pathname
+traversal fails.
+
+Typical protective patterns:
+
+* `750`
+
+  * **Other:** no access to files in the directory, regardless of file permissions.
+* `710`
+
+  * **Other:** hard stop.
+  * **Group:** traversal possible for already known names, but no directory listing.
+* `700`
+
+  * **Group/Other:** complete isolation.
+
+Security effect:
+
+* Prevents unintended access to child files.
+* Reduces reconnaissance opportunities.
+* Provides strong containment against unknown path discovery.
+
+---
+
+### Blind Access (Known Names Usable)
+
+Execute permission without Read permission (`x` without `r`) enables access to already known directory entries.
+
+Typical patterns:
+
+* `711`
+* `710`
+* `300`
+* `100`
+
+Security implication:
+
+* Directory listing blocked.
+* Known or guessable file names remain accessible.
+* Impact depends strongly on filename predictability.
+
+Example risks:
+
+```text
+config.json
+credentials.db
+backup.zip
+```
+
+---
+
+### Blind Modification (Known Names Mutable)
+
+Write + Execute (`wx`) without Read permission permits directory modification despite invisible contents.
+
+Typical patterns:
+
+* `733`
+* `730`
+* `300`
+
+Security implication:
+
+* Creation of new files possible.
+* Renaming/deletion possible for known names.
+* Directory contents remain invisible.
+
+This behavior is intentional by Unix design and demonstrates that visibility and mutability are separate privileges.
+
+# Annex
+
+## Detailed Results Write
 
 ```commandline
 root@dev:/tmp/lab-03-s2-600# ls
@@ -351,21 +593,7 @@ config.json  delete.json  rename_src.json
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Detailed Results
+### Create
 
 | Scenario            | File                           | dev   |
 |:--------------------|:-------------------------------|:------|
@@ -378,7 +606,7 @@ Detailed Results
 | /tmp/lab-03-s7-100/ | /tmp/lab-03-s7-100/create.json | N     |
 | /tmp/lab-03-s8-000/ | /tmp/lab-03-s8-000/create.json | N     |
 
-
+### Rename
 
 | Scenario            | File                               | dev   |
 |:--------------------|:-----------------------------------|:------|
@@ -391,6 +619,7 @@ Detailed Results
 | /tmp/lab-03-s7-100/ | /tmp/lab-03-s7-100/rename_src.json | N     |
 | /tmp/lab-03-s8-000/ | /tmp/lab-03-s8-000/rename_src.json | N     |
 
+### Delete
 
 | Scenario            | File                           | dev   |
 |:--------------------|:-------------------------------|:------|
@@ -404,99 +633,4 @@ Detailed Results
 | /tmp/lab-03-s8-000/ | /tmp/lab-03-s8-000/delete.json | N     |
 
 
-
-
-
-Create Beispiel:
-
-
-touch dir/newfile
-
-
-resolve("dir")
-↓
-check x permission
-↓
-modify directory entries
-↓
-insert:
-newfile -> inode 789
-
-
-
-
-Delete
-
-resolve("dir")
-↓
-resolve("config.json")
-↓
-remove entry
-
-
-w in Unix:
-If I can reach the namespace, I may mutate it.
-
-300
--wx
-
-ist der echte Write-Fall.
-
-Das ist übrigens genau analog zu deinem Read-Modell:
-
-400
-r--
-
-sehen
-
-aber nicht benutzen
-
-Und jetzt kommt der Mindfuck 😄
-
-200 ist in Unix fast immer:
-
-misconfiguration smell
-
-weil:
-
-write without search
-
-praktisch kaum sinnvoll ist.
-
-
-### `300`
-
-```text
--wx
-```
-
-
-### Security Considerations
-
-
-
-
-**Blind modification**: Names not visible, but known names changeable (wx)
-
-
-
-
-
-
-
-## Summary of Security Considerations
-
-- Read Access on a directory facilitates information disclosure of file names
-
-- Not granting Execute bit on a directory acts as a hard stop and prevents using of files for entities
-
-Patterns: 
-- 750:
-  - Other: no access to files in the directory, irregardless of the file permission
-- 710: 
-  - Other: same as 750
-  - Group:  no directory listing possible - no further reconnaissance.
-- 700: 
-  - Other/Group: Hard stop for group and others 
-    
 
