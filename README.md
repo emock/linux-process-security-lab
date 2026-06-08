@@ -83,6 +83,18 @@ Local IPC through filesystem-based sockets.
 
 Unix socket permissions control which processes can access local services.
 
+- filesystem DAC on .sock
+- who may connect?
+- SO_PEERCRED
+- peer identity
+- request authorization
+- SCM_RIGHTS
+- fd passing
+- N:1:M routing risks
+- local privilege boundaries
+
+
+
 ---
 
 ## 05 – Signals Between Processes
