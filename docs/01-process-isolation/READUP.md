@@ -1,28 +1,50 @@
 
 # Overview
-Local attacker on same host
 
-✓ Kann anderer User /proc lesen?
-✓ Kann same-user /proc lesen?
-✓ Kann er fremde FDs sehen?
-✓ Kann er fremde Dateien lesen?
-✓ Kann er fremde Socket Streams lesen?
-✓ Was ändert root?
-✓ Was ändern Capabilities?
+This lab focuses on unprivileged local process isolation.
+Privileged bypass mechanisms such as ptrace, capabilities, packet sniffing,
+or explicit FD passing are documented as future work but are out of scope
+for the current threat model.
+
+## Possible Extensions
 
 
 
-- UID/GID
-- DAC
-- /proc visibility
-- FD ownership
-   - file-backed FD
-   - socket-backed FD
-  
-- ptrace
-- signals
-- process execution
-- root/capability bypasses
+### 1. Process Introspection (unpriviliged same user)
+
+- [ ] `/proc` leakage
+  - [ ] environ leakage
+  - [ ] cmdline leakage
+  - [ ] maps / memory layout
+  - [ ] mem access restrictions
+
+### 2. Process Lifecycle / Ressource inheritance
+
+- [ ] fork() / execve()
+  - [ ] inherited file descriptors
+  - [ ] inherited privileges
+  - [ ] FD_CLOEXEC
+  - [ ] exec restrictions
+
+### 3. IPC / Networking - intentended rocess interaction
+
+- [ ] SCM_RIGHTS / FD passing
+- [ ] UDS trust / routing model
+- [ ] local routing abuse
+- [ ] process-to-process communication
+
+### 4. Privileged Local Attacker
+
+- [ ] Linux Capabilities
+  - [ ] CAP_SYS_PTRACE
+  - [ ] CAP_NET_RAW / sniffing
+  - [ ] CAP_KILL
+  - [ ] CAP_NET_BIND_SERVICE
+  - [ ] CAP_SYS_ADMIN
+
+- [ ] ptrace / gdb
+- [ ] pidfd_getfd()
+- [ ] root-based socket introspection
 
 ## Technical Background
 
@@ -122,11 +144,14 @@ elevated privileges are present (e.g. root or ptrace-like permissions).
 [//]: # (Distribution-Hardening kann Verhalten ändern)
 
 
-While there is the common principle `Everything in Linux is a file`
-Linux does distinguish between these handles:
-File backend handles and kernel-managed IPC handles.
+While Linux exposes many resources through file-like interfaces,
+it distinguishes between file-backed resources and kernel-managed IPC resources.
 
-For File backed handles only the DAC permissions of the process are evaluated and relevant.
+File-backed handles:
+Security is primarily DAC-based.
+
+If a same-user process can access `/proc/<pid>/fd/<n>`
+and DAC permits access to the underlying file, the contents may be readable.
 
 
 ```commandline
@@ -156,12 +181,15 @@ This matches with the Linux Security view that same-user processes are within th
 >Note: This behavior may be undesirable in hardened environments and can be restricted further 
 through MAC systems or procfs hardening.
 
+
+
+
 Kernel-managed IPC handles, such as
 
 - TCP sockets
 - UDP sockets
 - UDS
-- pipes
+- pipes (special case)
 - epoll
 - eventfd
 
@@ -169,16 +197,18 @@ are working differently.
 
 While the DAC permissions are still a prerequisite to access information 
 about the existence of this socket, it is not sufficient to read out the contents.
+Kernel IPC handles (e.g. sockets) add another boundary:
+Handle ownership.
 
-The process needs to proof ownership of the "File Handle".
+The process needs to hold a valid reference in its own FD table
 The Linux kernel opens a socket object for each TCP socket with a 
 - recv queue
 - send queue
 - TCP State
 - Buffers
 
-In order to access this socket from user-space a process needs to proof ownership of the 
-file descriptor pointing to the socket object using the API `recv(fd)`.
+In order to access this socket from user-space a process needs to possess a valid reference
+to the file descriptor pointing to the socket object using the API `recv(fd)`.
 
 ```commandline
 current process
@@ -190,132 +220,94 @@ resolve socket object
 copy bytes from kernel to user space
 ```
 
-
-Specifically, as e.g. TCP Sockets are defined by a unique Tuple 
-(IP_DEST, IP_SRC, PORT_DEST, PORT_SRC) and each port can only be used
-by a single process, this makes a file handle to a TCP socket exclusively.
-So no other process than the creating process can access the TCP socket.
+The kernel owns the socket object.
+A process only owns a reference (file descriptor) to it.
+Access to the socket requires the process to possess a valid FD in its own FD table.
+/proc/<pid>/fd exposes visibility, but does not automatically grant ownership or re-opening of kernel IPC objects.
 
 Summary
 > Sockets add another security layer to DAC: Handle Ownership
 
-
-
-Bypass:
-
-Das geht mit:
-
-SCM_RIGHTS (bewusstes FD sharing)
-pidfd_getfd() (privilegiert)
-ptrace-artige Mechanismen
+> Visibility of a kernel object does not imply ownership or usability of that object.
 
 
 
-DAC: ja (gleicher User)
+## Further Topics
 
-"PID 86647 besitzt ein Auto mit Fahrgestellnummer 752737"
+### File Descriptor Sharing
 
-Linux hat hier eine zweite Schicht neben DAC:
+File descriptors are process-local integers, but multiple processes may reference the same kernel object through shared
+entries in the open file table.
 
-Object Capability / Handle Ownership
+Ways to share:
+```commandline
+fork() inheritance
+dup()/dup2()
+SCM_RIGHTS
+```
 
-Das Prinzip:
+Security relevance:
 
-Nur wer einen gültigen Handle (FD) besitzt, darf die Ressource benutzen.
+File descriptor leakage may unintentionally grant access to privileged resources.
 
-Bei Files:
+### Additional /proc leakage vectors
 
-open("/tmp/x")
-↓
-DAC check
-↓
-Kernel gibt fd=3 zurück
-↓
-ab jetzt Handle-basiert
+Examples:
 
-Nach dem open() ist DAC weitgehend vorbei.
+/proc/pid/environ
 
-Ungesichert gegenüber wem?
+may expose:
+```commandline
+API keys
+tokens
+credentials
 
-Ungesichert heißt:
+```
 
-Jeder, der die Pakete beobachten kann.
+/proc/pid/cmdline
 
-Nicht:
+may expose:
+```commandline
+passwords passed via CLI
+debug secrets
+```
 
-Jeder lokale Prozess.
+/proc/pid/maps
 
-Die beiden Modelle:
+shows:
 
-Prozessmodell
-local process
-↓
-braucht FD ownership
+``` 
+loaded libraries
+memory layout
+```
 
-Netzwerkmodell
-packet observer
-↓
-braucht network visibility
+/proc/pid/mem
 
-Da ist der große Unterschied.
+may enable:
+```commandline
+memory inspection
+```
+(subject to ptrace permissions)
 
 
+### Extending the default local Security 
 
+This section elaborates how to get access to a socket object as a local process.
 
-Wie würdest du wirklich „auf 752737 hören“?
+This is possible using:
 
-Es gibt nur wenige Wege:
+1. Kernel privileges by getting `root` or `CAP_SYS_PTRACE`
+Then one can do
 
-1. Kernel privileges
-
-Root oder:
-
-CAP_SYS_PTRACE
-
-Dann:
-
+```commandline
 fd dup
 pidfd_getfd
 ptrace
+```
 
-möglich.
+2. Forwarding the FD using SCM_RIGHTS 
 
-2. FD weiterreichen
-
-Victim:
-
-SCM_RIGHTS
-
-Dann bekommst du echtes FD:
-
-attacker fd 5
--> socket 752737
-
-Jetzt klappt:
-
-recv(5)
-
-3. Sniffing
-
-Nicht Socket nehmen.
-
-Sondern:
-
-network interface
-
-abhören.
-
-Mit:
-
-CAP_NET_RAW
-root
-
-Dann siehst du:
-
-TOP_SECRET
-
-ohne FD.
-
+3. Sniffing on the network interface getting 'root' or 'CAP_NET_RAW'
 
 
 
@@ -356,8 +348,6 @@ set accordingly, the contents can be read out.
 This is different with the TCP socket.
 Here we encounter a FileException.
 
-TODO Why?
-
 It is not possible for another user to access the File Descriptors of a process:
 
 ```commandline
@@ -374,21 +364,24 @@ Permission Denied
 
 
 
+[//]: # (Outlook: )
 
+[//]: # ()
+[//]: # (dev@dev:~$ sudo tcpdump -i any port 8080 -X)
 
+[//]: # ()
+[//]: # (```commandline)
 
+[//]: # (12:44:59.739850 lo In IP ubuntu-24.04-server-testing.shared.33348 > ubuntu-24.04-server-testing.shared.http-alt:)
 
+[//]: # (Flags [P.], seq 12:23, ack 1, win 512, options [nop,nop,TS val 3020704275 ecr 3020694273], length 11: HTTP)
 
+[//]: # (0x0000:  4500 003f 8253 4000 4006 347e 0ad3 3721 E..?.S@.@.4~..7!)
 
-Outlook: 
+[//]: # (0x0010:  0ad3 3721 8244 1f90 babc 8a66 206d 39a1 ..7!.D.....f.m9.)
 
-dev@dev:~$ sudo tcpdump -i any port 8080 -X
+[//]: # (0x0020:  8018 0200 8419 0000 0101 080a b40c 4a13 ..............J.)
 
-```commandline
-12:44:59.739850 lo In IP ubuntu-24.04-server-testing.shared.33348 > ubuntu-24.04-server-testing.shared.http-alt:
-Flags [P.], seq 12:23, ack 1, win 512, options [nop,nop,TS val 3020704275 ecr 3020694273], length 11: HTTP
-0x0000:  4500 003f 8253 4000 4006 347e 0ad3 3721 E..?.S@.@.4~..7!
-0x0010:  0ad3 3721 8244 1f90 babc 8a66 206d 39a1 ..7!.D.....f.m9.
-0x0020:  8018 0200 8419 0000 0101 080a b40c 4a13 ..............J.
-0x0030:  b40c 2301 544f 505f 5345 4352 4554 0a ..#.TOP_SECRET.
-```
+[//]: # (0x0030:  b40c 2301 544f 505f 5345 4352 4554 0a ..#.TOP_SECRET.)
+
+[//]: # (```)

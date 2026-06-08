@@ -5,10 +5,14 @@
   source
 
 # lab-01-process-isolation
-- [ ] Difference between socket and file handles -> READUP!! and lab extension! 
-- [ ] Add Capabilities 
-- [ ] Rework attacker script to read out FDs of file and socket
 
+- [ ] Add Capabilities
+  -[ ] CAP_SYS_PTRACE
+  - [ ] CAP_NET_RAW / sniffing
+- [ ] ptrace / gdb
+- [ ] pidfd_getfd()
+- [ ] SCM_RIGHTS / FD passing
+- [ ] UDS trust/routing model
 
 
 
