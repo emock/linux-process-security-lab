@@ -60,13 +60,16 @@ Group: shared_group
 
 ## Useful commands
 
-| Command                                        | Note                                                                                                                                  |      
-|:-----------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------|
-| busctl --system list                           | Show current bus participants                                                                                                         |
-| bus-monitor --system \| tee ~/dbus_monitor.log | to log the current traffic                                                                                                            
-| dbus-monitor --system                               | Messages being sent on the bus can be inspected using:                                                                                | 
-|Sending Messages | gdbus call --system --dest com.custom.logger --object-path /com/custom/logger --method com.custom.logger.vSendMessage 42 "hello" True | 
-| Introspect | gdbus introspect --system --dest com.custom.logger --object-path /com/custom/logger |
+| Command                                                                                                          | Description                   | Note                                        |      
+|:-----------------------------------------------------------------------------------------------------------------|-------------------------------|:--------------------------------------------|
+| dbus-monitor --system "interface='com.custom.logger'" \| tee ~/dbus_monitor.log                                  | Log traffic                   | Prefer dbus-monitor over busctl for logging |
+| busctl --system list                                                                                             | Show current bus participants |                                             |                                             |
+| busctl --address=unix:path=/tmp/dbus call SERVICE PATH INTERFACE METHOD SIGNATURE VALUES                         | Send                          |                                             |
+| busctl introspect com.custom.logger /com/custom/logger                                                           | Introspection                 |                                             |
+| busctl --system status com.custom.logger                                                                         | Show service status      |                                             |
+| gdbus call --system --dest com.logger --object-path /com/logger --method com.logger.vSendMessage 42 "hello" True | GDBUS Send                    |                                             |
+| gdbus introspect --system --dest com.custom.logger --object-path /com/custom/logger                              | GDBUS Introspect              |                                             |
+| ssh -NT -L /tmp/dbus:/run/dbus/system_bus_socket SSH_HOST                                                        | SSH Tunnel of Unix Socket     |                                             |
 
 
 
