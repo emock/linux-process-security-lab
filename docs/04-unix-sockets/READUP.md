@@ -61,6 +61,29 @@ Check using `cat /proc/sys/kernel/yama/ptrace_scope`
 | `2`  | nur `CAP_SYS_PTRACE`      |
 | `3`  | komplett disabled         |
 
+
+
+
+### Security properties of UDS
+
+UDS selbst
+
+Ein Unix Domain Socket garantiert bereits:
+
+zuverlässige Zustellung (SOCK_STREAM)
+Reihenfolge der Bytes
+keine Veränderung der Daten durch andere Prozesse
+keine Einspeisung in bestehende Verbindungen durch Dritte
+Kernel-vermittelte Endpunktkommunikation
+
+Ein lokaler Prozess kann nicht einfach:
+
+Pakete mitschneiden,
+Bytes verändern,
+Nachrichten injizieren,
+
+
+
 ### Manually connecting to a socket
 
 nc -U /run/ipc_test/demo.sock
@@ -85,17 +108,42 @@ A check for group membership is probably not the best solution.
 
 
 
-Spoofing
+## Spoofing
 
+The server runs as user dev.
+The IPC is accessible to members of group `shared_group`.
+A legitimate client partner_component (uid=1001, gid=1002) periodically sends messages, identifying as Client_1.
+Another user of the group partner2 (uid 1002, gid=1003) spoofs the identity of Client_1.
 
 ```commandline
-peer: pid=106355 uid=1000 gid=1000
+----
+peer: pid=132208 uid=1001 gid=1002
 claimed client: Client_1
 ----
-peer: pid=106356 uid=1000 gid=1000
+peer: pid=132211 uid=1002 gid=1003
 claimed client: Client_1
 ----
-peer: pid=106355 uid=1000 gid=1000
+peer: pid=132208 uid=1001 gid=1002
 claimed client: Client_1
-
+----
 ```
+
+partner2 successfully spoofed the identity Client_1 of partner_component.
+
+
+
+### SO_PERCREED
+
+The scenario extends the server to evaluate the uid and gid and only allows user partner_component to connect.
+
+```commandline
+dev@dev:~$ socat - UNIX-CONNECT:/run/ipc_test/demo.sock
+Denied
+dev@dev:~$ sudo -u partner2 socat - UNIX-CONNECT:/run/ipc_test/demo.sock
+Denied
+dev@dev:~$ sudo -u partner_component socat - UNIX-CONNECT:/run/ipc_test/demo.sock
+{"client_id":"Client_1"}
+ok
+```
+This is an effective measure to ensure authentication on process level (assuming one user always instantiates one process).
+

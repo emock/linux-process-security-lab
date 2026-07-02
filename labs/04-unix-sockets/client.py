@@ -4,8 +4,6 @@ import time
 
 SOCK = "/run/ipc_test/demo.sock"
 
-
-
 while True:
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(SOCK)

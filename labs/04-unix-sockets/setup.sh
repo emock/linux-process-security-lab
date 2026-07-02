@@ -13,8 +13,8 @@ fi
 sudo mkdir -p /run/ipc_test/
 sudo chown dev:shared_group /run/ipc_test/
 
-cp "$SCRIPT_DIR/uds_server.py" "/tmp/"
-cp "$SCRIPT_DIR/uds_client.py" "/tmp/"
+cp "$SCRIPT_DIR/server.py" "/tmp/"
+cp "$SCRIPT_DIR/client.py" "/tmp/"
 
 
 
