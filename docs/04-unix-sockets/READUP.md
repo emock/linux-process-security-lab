@@ -94,7 +94,7 @@ socat - UNIX-CONNECT:/run/ipc_test/demo.sock
 
 
 
-PEERCRED
+SO_PEERCRED
 
 dev@dev:/run$ id partner2
 uid=1002(partner2) gid=1003(partner2) groups=1003(partner2),1001(shared_group)
@@ -131,19 +131,55 @@ claimed client: Client_1
 partner2 successfully spoofed the identity Client_1 of partner_component.
 
 
+Extending the server Code:
+
+```commandline
+partner2@dev:/home/dev$ socat - UNIX-CONNECT:/run/ipc_test/demo.sock 
+{"method":"uregister", "name":"Client1", "endpoint":"endpoint1"}
+ok
+
+```
+
+
+When the legitimate clients tries to register:
+
+```commandline
+Registering Client Client1
+Client already registered
+```
+
 
 ### SO_PERCREED
 
-The scenario extends the server to evaluate the uid and gid and only allows user partner_component to connect.
+The scenario extends the server to evaluate the uid and gid.
 
 ```commandline
-dev@dev:~$ socat - UNIX-CONNECT:/run/ipc_test/demo.sock
-Denied
-dev@dev:~$ sudo -u partner2 socat - UNIX-CONNECT:/run/ipc_test/demo.sock
-Denied
-dev@dev:~$ sudo -u partner_component socat - UNIX-CONNECT:/run/ipc_test/demo.sock
-{"client_id":"Client_1"}
-ok
+Listening on /run/ipc_test/demo.sock
+Registering Client (134716, 1000, 1000)
+----
+Listing all connected clients
+1000 endpoint1
+Sending to destination
+data: testing
+----
+
+...
+
+Registering Client (134717, 1002, 1003)
+----
+Listing all connected clients
+1000 endpoint1
+1002 endpoint1
 ```
-This is an effective measure to ensure authentication on process level (assuming one user always instantiates one process).
+
+Based on the UIDs the server can distinguish, which client is currently interacting, effectively preventing Spoofing.
+
+Limitation:
+The other process can still register the same endpoint, as this is not the focus of this scenario.
+By extending the implementation to check for predefined endpoints for certain users the server implementation could be further
+hardened.
+As an alternative the server could also rely on Trust On First Use, i.e. the first client to register is assumed to be 
+the legitimate client.
+
+
 

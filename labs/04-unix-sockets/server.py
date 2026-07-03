@@ -41,17 +41,53 @@ while True:
     data = conn.recv(4096)
     request = json.loads(data.decode())
 
-    if request["method"] == "register":
+
+
+
+    if request["method"] == "uregister":
+
+        clientid = request["name"]
+
+        print(f"Registering Client {clientid}")
+
+
+
+        if clientid in clients.keys():
+            print(f"Client already registered")
+            conn.sendall(b"Denied\n")
+            conn.close()
+            continue
+
+        clients[clientid] = request["endpoint"]
+        conn.sendall(b"ok\n")
+
+    elif request["method"] == "register":
         print(f"Registering Client {pid, uid, gid}")
+
+        if uid in clients.keys():
+            print(f"Client already registered")
+            conn.sendall(b"Denied\n")
+            conn.close()
+            continue
+
         clients[uid] = request["endpoint"]
+        conn.sendall(b"ok\n")
+
+
     elif request["method"] == "send":
-        print(f"Sending to destination")
+
+        if uid in clients.keys() or clientid in clients.keys():
+            print(f"Sending to destination")
+            print(f"data: {request["data"]}")
+            conn.sendall(b"Sending\n")
+            conn.close()
     else:
         print(f"Unknown request {request}")
 
 
     print("----")
-    print(f"peer: pid={pid} uid={uid} gid={gid}")
+    print("Listing all connected clients")
+    # print(f"peer: pid={pid} uid={uid} gid={gid}")
 
     for c,v in clients.items():
         print(c,v)
@@ -67,5 +103,5 @@ while True:
     # print(f"claimed client: {request['client_id']}")
 
     # print("Received", data)
-    conn.sendall(b"ok\n")
-    conn.close()
+    # conn.sendall(b"ok\n")
+    # conn.close()
