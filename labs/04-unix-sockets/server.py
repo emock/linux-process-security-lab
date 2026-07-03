@@ -27,6 +27,7 @@ s.listen(5)
 print(f"Listening on {SOCK}")
 
 clients = {}
+uclients = {}
 
 while True:
     conn, _ = s.accept()
@@ -50,15 +51,13 @@ while True:
 
         print(f"Registering Client {clientid}")
 
-
-
-        if clientid in clients.keys():
+        if clientid in uclients.keys():
             print(f"Client already registered")
             conn.sendall(b"Denied\n")
             conn.close()
             continue
 
-        clients[clientid] = request["endpoint"]
+        uclients[clientid] = request["endpoint"]
         conn.sendall(b"ok\n")
 
     elif request["method"] == "register":
@@ -76,7 +75,15 @@ while True:
 
     elif request["method"] == "send":
 
-        if uid in clients.keys() or clientid in clients.keys():
+        if uid in clients.keys() :
+            print(f"Sending to destination")
+            print(f"data: {request["data"]}")
+            conn.sendall(b"Sending\n")
+            conn.close()
+
+    elif request["method"] == "usend":
+
+        if clientid in uclients.keys():
             print(f"Sending to destination")
             print(f"data: {request["data"]}")
             conn.sendall(b"Sending\n")
@@ -92,6 +99,8 @@ while True:
     for c,v in clients.items():
         print(c,v)
 
+    for c, v in uclients.items():
+        print(c, v)
 
     # if user != "partner_component":
     #     conn.sendall(b"Denied\n")
