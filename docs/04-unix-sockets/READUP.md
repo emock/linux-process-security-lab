@@ -1,20 +1,23 @@
-| Thema                    | Priorität | Warum                |
-| ------------------------ | --------: | -------------------- |
-| DAC / connect boundary   |      High | Grundschutz          |
-| Information Disclosure   |      High | schnell abschließbar |
-| Tampering                |      High | schnell abschließbar |
-| `SO_PEERCRED` / Spoofing | Very High | PROD-relevant        |
-| Routing / proxy abuse    | Very High | direkt euer CGW-Case |
-| Request Authorization    | Very High | Kernrisiko           |
-| DoS                      |    Medium | nice-to-have         |
-| `SCM_RIGHTS`             |    Medium | novelty              |
-| Same-user ptrace         |       Low | bereits Lab 01       |
+# Unix Domain Sockets 
+
+## Overview of useful commands
+
+|                                              |
+|----------------------------------------------|
+| nc -U /run/ipc_test/demo.sock                |
+| socat - UNIX-CONNECT:/run/ipc_test/demo.sock |
+
 
 ## Technical Background
 
-Access to the socket.
-As elaborated in lab 01-process-isolation the socket object is only
-accessible to the owning process.
+Access to a Unix Domain Socket requires write privileges (010) to the socket object:
+`s-w--w----  1 dev  shared_group   0 Jul  3 11:51 demo.sock
+`
+Neither read nor execute is needed.
+Although this does not have a direct security impact, it may indicate an inaccurate understanding 
+of UDS or simply reflect the use of a default permission template. 
+
+The socket file descriptor is private to the owning process unless explicitly shared (e.g., SCM_RIGHTS).
 
 ```
 dev@dev:/proc/106031/fd$ ls -al
@@ -26,14 +29,21 @@ lrwx------ 1 dev dev 64 Jun 15 11:20 1 -> /dev/pts/4
 lrwx------ 1 dev dev 64 Jun 15 11:20 2 -> /dev/pts/4
 lrwx------ 1 dev dev 64 Jun 15 11:20 3 -> 'socket:[807998]'
 ```
+As elaborated in more detail in lab-01, other local unprivileged processes can not access this resource.
+Once a connection has been established, all message routing is performed inside the kernel. 
+Consequently, unprivileged user processes cannot observe, inject or modify messages exchanged between peers.
 
-This implies that eavesdropping is not possible for another process,
-as the socket handle is only accessible to the owning process.
-The same is true for Tampering.
+These security guarantees break if a process gains root privileges or any of the following Capabilities:
+
+| Capability            | Description                                                   |
+|-----------------------|---------------------------------------------------------------|
+| CAP_SYS_PTRACE        | allows strace, gdb attach, ptrace                             |
+| CAP_SYS_ADMIN         | root-like                                                     |
+| CAP_BPF + CAP_PERFMON | eBPF uprobes/kprobes, syscall tracing, socket instrumentation |
+| Ptrace Rules          | cat /proc/sys/kernel/yama/ptrace_scope                        |
 
 
-Though what is possible, if an attacker has gained root privileges
-Eavesdropping using strace `sudo strace -p {PID} -e read,recvmsg,write,sendmsg`
+To shortly demonstrate, below is a log using `sudo strace -p {PID} -e read,recvmsg,write,sendmsg`
 
 ```commandline
 dev@dev:/run$ sudo strace -p 106031 -e read,recvmsg,write,sendmsg
@@ -43,77 +53,41 @@ write(1, "Received b'SECRET\\n'\n", 21) = 21
 
 ```
 
+## Security guarantees of UDS and residual risks
+
+| Property                   | Provided |
+|----------------------------|----------|
+| Authentication             | optional   |
+| Authorization              | no       |
+| Connection integrity       | yes      |
+| Connection confidentiality | yes      |
+| Replay protection          | no       |
+| Auditing                   | no       |
+| Availability               | no       |
 
 
+Given the general STRIDE matrix of a data flow and process, UDS evaluates as follows:
 
-Capabilities:
-CAP_SYS_PTRACE: allows strace, gdb attach, ptrace
-CAP_SYS_ADMIN: root-like
-CAP_BPF + CAP_PERFMON: eBPF uprobes/kprobes, syscall tracing, socket instrumentation
-Same-UID + ptrace-Regeln:
+|                 | S                     | T          | R    | I          | D    | E    |
+|-----------------|-----------------------|------------|------|------------|------|------|
+| Data flow       | no                    | yes        | no   | yes        | yes  | no   |
+| Process         | yes                   | yes        | yes  | yes        | yes  | yes  |
+| Data flow (UDS) | no                    | mitigated  | no   | mitigated  | yes  | no   |
+| Process (UDS)   | depends (SO_PEERCRED) | yes        | yes  | yes        | yes  | yes  |
 
-Check using `cat /proc/sys/kernel/yama/ptrace_scope`
+Regarding Data flow threats, both tampering and information disclosure have already been described in the previous section.
+The remaining threat of DoS is applicable, as UDS does not offer any sender side limits configuration (as opposed to DBUS).
+This needs to be addressed by the application.
+For UDS Process threats, we will investigate Spoofing.
+The remaining threats are stack-agnostic and therefore out of scope. 
 
-| Wert | Bedeutung                 |
-| ---- | ------------------------- |
-| `0`  | gleiche UID darf attachen |
-| `1`  | nur Parent/Child          |
-| `2`  | nur `CAP_SYS_PTRACE`      |
-| `3`  | komplett disabled         |
+## Spoofing of Sender Process
 
-
-
-
-### Security properties of UDS
-
-UDS selbst
-
-Ein Unix Domain Socket garantiert bereits:
-
-zuverlässige Zustellung (SOCK_STREAM)
-Reihenfolge der Bytes
-keine Veränderung der Daten durch andere Prozesse
-keine Einspeisung in bestehende Verbindungen durch Dritte
-Kernel-vermittelte Endpunktkommunikation
-
-Ein lokaler Prozess kann nicht einfach:
-
-Pakete mitschneiden,
-Bytes verändern,
-Nachrichten injizieren,
-
-
-
-### Manually connecting to a socket
-
-nc -U /run/ipc_test/demo.sock
-
-
-socat - UNIX-CONNECT:/run/ipc_test/demo.sock
-
-
-
-
-SO_PEERCRED
-
-dev@dev:/run$ id partner2
-uid=1002(partner2) gid=1003(partner2) groups=1003(partner2),1001(shared_group)
-
-
-peer pid=106224 uid=1002 gid=1003 sent=b'adfasdfadf\n'
-
-ONly the main GID is transmitted, not supplementary groups.
-A check for group membership is probably not the best solution.
-
-
-
-
-## Spoofing
-
-The server runs as user dev.
+We set up a server, running as user dev, offering the methods uregister, register, usend, send.
+Both uregister and usend are viable to Spoofing, as the application evaluates a client-provided ID to assess the sender-identity. 
 The IPC is accessible to members of group `shared_group`.
-A legitimate client partner_component (uid=1001, gid=1002) periodically sends messages, identifying as Client_1.
-Another user of the group partner2 (uid 1002, gid=1003) spoofs the identity of Client_1.
+A legitimate client partner_component (uid=1001, gid=1002) periodically sends messages, identifying as `Client_1`.
+Another user of the group partner2 (uid 1002, gid=1003) spoofs the identity of `Client_1`.
 
 ```commandline
 ----
@@ -128,10 +102,11 @@ claimed client: Client_1
 ----
 ```
 
-partner2 successfully spoofed the identity Client_1 of partner_component.
+The server prints the peer credentials to showcase the Spoofing use-case.
+User partner2 (uid=1002) successfully spoofed the identity Client_1 of partner_component.
 
 
-Extending the server Code:
+Observing the same issue with the offered methods uregister:
 
 ```commandline
 partner2@dev:/home/dev$ socat - UNIX-CONNECT:/run/ipc_test/demo.sock 
@@ -140,8 +115,7 @@ ok
 
 ```
 
-
-When the legitimate clients tries to register:
+When the legitimate clients partner_component tries to call the `register` method it receives an error message:
 
 ```commandline
 Registering Client Client1
@@ -151,7 +125,30 @@ Client already registered
 
 ### SO_PERCREED
 
-The scenario extends the server to evaluate the uid and gid.
+Linux exposes the peer credentials (PID, UID, GID) of a connected process via SO_PEERCRED per connection.
+
+
+```commandline
+dev@dev:/run$ id partner2
+uid=1002(partner2) gid=1003(partner2) groups=1003(partner2),1001(shared_group)
+
+peer pid=106224 uid=1002 gid=1003 sent=b'adfasdfadf\n'
+
+
+```
+Note that  only the main GID is transmitted, not supplementary groups.
+Depending on the scenario a check on group membership might yield unexpected results.
+
+In contrast to the insecure implementation which was susceptible to Spoofing, the server implements 
+two additional methods register and send, which rely on the SO_PEERCRED for authenticating the attached clients.
+These credentials are obtained from the kernel rather than supplied by the client application thereby preventing application-level spoofing.
+
+> Security guarantees apply to the transport only.
+While UDS provides transport confidentiality and integrity and may support peer authentication (SO_PEERCRED), these
+guarantees can be *negated by insecure application protocols*. 
+>> For example, deriving the sender identity from client-controlled message fields instead of kernel-provided peer 
+>> credentials reintroduces application-level spoofing.
+
 
 ```commandline
 Listening on /run/ipc_test/demo.sock
@@ -172,8 +169,6 @@ Listing all connected clients
 1002 endpoint1
 ```
 
-Based on the UIDs the server can distinguish, which client is currently interacting, effectively preventing Spoofing.
-
 Limitation:
 The other process can still register the same endpoint, as this is not the focus of this scenario.
 By extending the implementation to check for predefined endpoints for certain users the server implementation could be further
@@ -183,3 +178,18 @@ the legitimate client.
 
 
 
+
+
+
+
+
+## Open Points and Future Work
+
+SCM_RIGHTS has not been considered so far but could be an interesting extension for future work to demonstrate how 
+file handles can be passed from a parent to a child process without further access checks.
+
+Implementing request authorization is an interesting learning field, however is independent of UDS and needs to be 
+handled by the application. 
+
+Extending the `client <--> server` implementation to an IPC Broker `client <--> server <--> client` could demonstrate the 
+common pitfalls (S,T,I,E) of such a custom design.

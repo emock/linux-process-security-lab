@@ -7,12 +7,25 @@
 # lab-01-process-isolation
 
 - [ ] Add Capabilities
-  -[ ] CAP_SYS_PTRACE
+  
   - [ ] CAP_NET_RAW / sniffing
+  - [ ] CAP_SYS_PTRACE: allows strace, gdb attach, ptrace
+  - [ ] CAP_SYS_ADMIN: root-like
+  - [ ] CAP_BPF + CAP_PERFMON: eBPF uprobes/kprobes, syscall tracing, socket instrumentation
+  - [ ]  Same-UID + ptrace-Regeln:
+  - Check using `cat /proc/sys/kernel/yama/ptrace_scope`
+
+| Wert | Bedeutung                 |
+| ---- | ------------------------- |
+| `0`  | gleiche UID darf attachen |
+| `1`  | nur Parent/Child          |
+| `2`  | nur `CAP_SYS_PTRACE`      |
+| `3`  | komplett disabled         |
+
 - [ ] ptrace / gdb
 - [ ] pidfd_getfd()
 - [ ] SCM_RIGHTS / FD passing
-- [ ] UDS trust/routing model
+- [x] UDS trust/routing model
 
 
 

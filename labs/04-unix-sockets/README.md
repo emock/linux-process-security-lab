@@ -1,6 +1,6 @@
 
 
-1. Run ./setup.sh
+1. Run ./setup.sh: This sets up the IPC socket with the correct permissions
 
 ## Spoofing
 
