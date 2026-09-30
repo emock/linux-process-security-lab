@@ -1,6 +1,7 @@
+from time import sleep
 
-while True:
-    with open("/tmp/demo.fifo", "r") as pipe:
-
-        data = pipe.read()
+with open("/tmp/demo.fifo", "r") as pipe:
+    while True:
+        data = pipe.read(1)
         print(data)
+        sleep(1)

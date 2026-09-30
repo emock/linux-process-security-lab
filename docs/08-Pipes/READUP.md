@@ -3,6 +3,19 @@
 ## Technical Background
 
 
+### Properties of Pipes
+
+
+| Property            | FIFO             |
+|---------------------|------------------|
+| Complexity          | simple           |
+| Data model          | Byte Stream      |
+| Access              | open/read/write  |
+| Directionality      | unidirectional   |
+| Peer identification | no peer identity |
+
+
+
 ### Overview
 
 | Syntax                        | Bedeutung                           |
@@ -36,10 +49,8 @@ When using `echo hello > file.txt` the underlying file handles of the shell are 
 `echo` immediately closes the file handle after writing.
 Use `pgrep sleep` to obtain the PID.
 
-We know from lab-01 that 
 
 
-TODO ich kapier das /dev/pts/0 nicht
 
 ```commandline
 bash
@@ -53,6 +64,28 @@ each process has three file handles by default
 fd 0 for input
 fd 1 for output
 fd 2 for error messages
+
+
+/dev/pts/0 is a Pseudo-Terminal slave device with bidirectional input and output.
+
+
+```commandline
+Terminal Emulator
+       │
+     PTY master
+       │
+       │ Kernel PTY
+       │
+     PTY slave
+       │
+   /dev/pts/0
+       │
+      bash
+   ┌───┼───┐
+  FD0 FD1 FD2
+```
+
+
 
 
 `sleep 1000 < input.log`
@@ -323,10 +356,54 @@ Process A (Writer)                    Named Pipe / FIFO                    Proce
 
 ```
 
-Note that the FIFO stores the bytes in order but does not ensure that a read retrieves exactly the 
+Note that the FIFO receives the bytes in order but does not ensure that a read retrieves exactly the 
 defined message but rather a number of bytes.
 For retrieving defined messages an application level protocol needs to be defined, e.g. in the simplest case
 using a delimiter or a prefixed length field.
+
+The kernel manages the FIFO and checks how many readers and writers are connected to it.
+If either a writer or a reader is missing in blocking mode the open call of the corresponding party will be blocked and the process 
+put to sleep.
+This is required as a FIFO does not store bytes in the same way a file does but rather offers a channel 
+for two processes to communicate.
+Hence if there is either no sending or receiving end the channel is non-functional.
+
+**Overview of FIFO blocking behavior**
+```commandline
+
+
+open(O_WRONLY)
+    │
+    └── no reader?
+            └── block until reader opens FIFO
+
+open(O_RDONLY)
+    │
+    └── no writer?
+            └── block until writer opens FIFO
+
+
+read()
+    │
+    ├── data available
+    │       └── return data
+    │
+    ├── buffer empty + writer exists
+    │       └── block until data becomes available
+    │
+    └── buffer empty + no writer exists
+            └── return EOF
+
+
+write()
+    │
+    ├── sufficient buffer space
+    │       └── write data
+    │
+    └── insufficient buffer space
+            └── may block until space becomes available
+```
+
 
 ```commandline
 dev@dev:~$ mkfifo /tmp/demo.fifo
@@ -342,26 +419,14 @@ dev@dev:/tmp$ echo "1" > demo.fifo
 
 ```
 
-Terminal 2:
-
-
-```commandline
-dev@dev:/tmp$ echo "2" > demo.fifo 
-
-```
-
-Both Terminal 1 and 2 seem stuck until the content from the pipe is retrieved by a receiver in this setup.
+Terminal 1 seems stuck as explained above, as there is no reader attached and the open call is blocked.
 
 Terminal 3:
 ```commandline
 dev@dev:/tmp$ cat demo.fifo
-2
 1
 ```
-
-We encounter the same issue when implementing this in code - the program writes to the pipe but then is stuck
-until a consumer retrieves the information from the pipe.
-
+ 
 Once data has been written to a pipe, another process cannot modify the bytes already buffered in the pipe. File
 descriptors are process-local and cannot simply be accessed by another unprivileged process. However, with a named pipe,
 insufficient filesystem permissions may allow another process to open the FIFO independently and inject or consume data.
@@ -370,12 +435,14 @@ We will elaborate these scenarios in the following labs.
 
 ### Lab 01 Spoofing
 
-Apparently, as the content of a FIFO is just a sequence of bytes, a consumer process cannot verify 
-"who" has provided this content.
-Also if authentication information would be provided, e.g. as part of a message structure, this is easily
-forgeable.
-Concluding, the only effective security mechanism is by using DAC and restricting the amount of senders 
-in the first place.
+The content of a FIFO is just a sequence of bytes and the FIFO itself does not provide peer identity.
+Therefore a consumer process cannot verify "who" has provided this content without additional security 
+mechanisms on application level.
+
+Also if identity information would be provided, e.g. as part of a message structure, this is easily
+forgeable if not properly secured, e.g. by a MAC or signature.
+Concluding, the easiest and effective security mechanism is by using DAC and restricting the amount of senders 
+in the first place. Other mechanisms such as application level authentication or SELinux/AppArmor are out of scope for this lab.
 
 Spoofing will be demonstrated in the following.
 If a malicious sender has access to a pipe Spoofing is possible.
@@ -387,7 +454,6 @@ dev@dev:/tmp$ echo "Attacker:hello from Provider" > demo.fifo
 
 
 ```commandline
-/home/dev/.virtualenvs/linux-process-security-lab/bin/python /home/dev/linux-process-security-lab/labs/08-Pipes/consumer.py 
 hello from Provider
 hello from Provider
 Attacker:hello from Provider
@@ -396,6 +462,20 @@ Attacker:hello from Provider
 ### Lab 02 Information Disclosure
 
 If a malicious entity can retrieve the content before the legitimate consumer, information disclosure is possible.
+
+
+### Lab 03 Denial of Service
+
+A malicious entity can fill the buffer of the FIFO and thereby block a legitimate writer. 
+
+```commandline
+Legitimate Writer ──┐
+                    │
+Attacker ───────────┼──> [ FIFO Buffer ] ──> Consumer
+                             │
+                             └──── shared buffer for all Providers
+```
+
 
 
 ```commandline
@@ -418,4 +498,7 @@ a named pipe for an unprivileged local attacker evaluates as follows:
 | Process (PIPE)   | yes | yes       | yes   | yes   | yes  | yes  |
 
 If the attacker is privileged, the mititgations are no longer applicable. 
+
+Tampering = mitigated refers specifically to modification of data already committed to the kernel pipe buffer. 
+A process with write access to the FIFO can still inject additional data.
 
