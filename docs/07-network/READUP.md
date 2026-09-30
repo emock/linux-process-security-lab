@@ -350,8 +350,8 @@ TCP/UDP on localhost for an unprivileged local attacker evaluates as follows:
 |                 | S   | T          | R    | I          | D    | E    |
 |-----------------|-----|------------|------|------------|------|------|
 | Data flow       | no  | yes        | no   | yes        | yes  | no   |
+| Data flow (UDP) | no  | mitigated  | no   | mitigated  | yes  | no   |
 | Process         | yes | yes        | yes  | yes        | yes  | yes  |
-| Data flow (UDP) | yes | mitigated  | no   | mitigated  | yes  | no   |
 | Process (UDP)   | yes | yes        | yes  | yes        | yes  | yes  |
 
 If the attacker is privileged, the mititgations are no longer applicable. 

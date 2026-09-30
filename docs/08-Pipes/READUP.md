@@ -143,7 +143,7 @@ l-wx------ 1 dev dev 64 Sep  7 07:34 2 -> /home/dev/1
 
 ### Bash processing
 
-Bash processes input from left to right
+Redirections for a command are processed from left to right.
 
 `command > everything.log 2>&1`
 
@@ -301,3 +301,121 @@ read-end of a pipe.
 > connects the input source of process2 to the same pipe
 
 > | connects two processes using a Kernel-Pipe
+
+
+## Names Pipes
+
+Using mkfifo we can create a named pipe in order to connect two processes, which are independently started 
+but share a need to exchange information with each other.
+
+
+The input is received and queued into a first in first out structure. 
+
+```commandline
+Process A (Writer)                    Named Pipe / FIFO                    Process B (Reader)
++------------------+                 /tmp/demo.fifo                        +------------------+
+|                  |                                                       |                  |
+| write("AAA")     | ----->     +------------------+                       |                  |
+| write("BBB")     | ----->     | A|A|A|B|B|B|C|C|C| -----> read(1) ------>| receives "A"     |
+| write("CCC")     | ----->     +------------------+                       |                  |
+|                  |                  FIFO                                 |                  |
++------------------+                                                       +------------------+
+
+```
+
+Note that the FIFO stores the bytes in order but does not ensure that a read retrieves exactly the 
+defined message but rather a number of bytes.
+For retrieving defined messages an application level protocol needs to be defined, e.g. in the simplest case
+using a delimiter or a prefixed length field.
+
+```commandline
+dev@dev:~$ mkfifo /tmp/demo.fifo
+dev@dev:/tmp$ ls -l demo.fifo 
+prw-rw-r-- 1 dev dev 0 Sep  7 11:23 demo.fifo
+```
+
+DAC can be used to secure a named pipe and the insight from chapter 02-file-permissions apply accordingly.
+
+Terminal 1:
+```commandline
+dev@dev:/tmp$ echo "1" > demo.fifo 
+
+```
+
+Terminal 2:
+
+
+```commandline
+dev@dev:/tmp$ echo "2" > demo.fifo 
+
+```
+
+Both Terminal 1 and 2 seem stuck until the content from the pipe is retrieved by a receiver in this setup.
+
+Terminal 3:
+```commandline
+dev@dev:/tmp$ cat demo.fifo
+2
+1
+```
+
+We encounter the same issue when implementing this in code - the program writes to the pipe but then is stuck
+until a consumer retrieves the information from the pipe.
+
+Once data has been written to a pipe, another process cannot modify the bytes already buffered in the pipe. File
+descriptors are process-local and cannot simply be accessed by another unprivileged process. However, with a named pipe,
+insufficient filesystem permissions may allow another process to open the FIFO independently and inject or consume data.
+
+We will elaborate these scenarios in the following labs.
+
+### Lab 01 Spoofing
+
+Apparently, as the content of a FIFO is just a sequence of bytes, a consumer process cannot verify 
+"who" has provided this content.
+Also if authentication information would be provided, e.g. as part of a message structure, this is easily
+forgeable.
+Concluding, the only effective security mechanism is by using DAC and restricting the amount of senders 
+in the first place.
+
+Spoofing will be demonstrated in the following.
+If a malicious sender has access to a pipe Spoofing is possible.
+This can be achieved by submitting a message to the pipe:
+
+```commandline
+dev@dev:/tmp$ echo "Attacker:hello from Provider" > demo.fifo 
+```
+
+
+```commandline
+/home/dev/.virtualenvs/linux-process-security-lab/bin/python /home/dev/linux-process-security-lab/labs/08-Pipes/consumer.py 
+hello from Provider
+hello from Provider
+Attacker:hello from Provider
+```
+
+### Lab 02 Information Disclosure
+
+If a malicious entity can retrieve the content before the legitimate consumer, information disclosure is possible.
+
+
+```commandline
+dev@dev:/tmp$ cat demo.fifo 
+hello from Providerdev@dev:/tmp$ 
+```
+
+
+
+## Security Properties
+
+Given the general STRIDE matrix of a data flow and process,
+a named pipe for an unprivileged local attacker evaluates as follows:
+
+|                  | S   | T         | R     | I     | D    | E    |
+|------------------|-----|-----------|-------|-------|------|------|
+| Data flow        | no  | yes       | no    | yes   | yes  | no   |
+| Data flow (PIPE) | no  | mitigated | no    | yes   | yes  | no   |
+| Process          | yes | yes       | yes   | yes   | yes  | yes  |
+| Process (PIPE)   | yes | yes       | yes   | yes   | yes  | yes  |
+
+If the attacker is privileged, the mititgations are no longer applicable. 
+
