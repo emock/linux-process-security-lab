@@ -360,6 +360,25 @@ Note that the FIFO receives the bytes in order but does not ensure that a read r
 defined message but rather a number of bytes.
 For retrieving defined messages an application level protocol needs to be defined, e.g. in the simplest case
 using a delimiter or a prefixed length field.
+Also if buffered data is not consumed and all open endpoints are closed, the unread data is discarded. Reopening the
+FIFO does not restore that data.
+
+```commandline
+Writer: write("hello")
+        close()
+
+FIFO buffer:
+[h][e][l][l][o]
+
+Consumer:
+read(1) -> "h"
+close()
+
+[e][l][l][o]  -> discarded
+
+Consumer:
+open()         -> new communication
+```
 
 The kernel manages the FIFO and checks how many readers and writers are connected to it.
 If either a writer or a reader is missing in blocking mode the open call of the corresponding party will be blocked and the process 
@@ -367,6 +386,7 @@ put to sleep.
 This is required as a FIFO does not store bytes in the same way a file does but rather offers a channel 
 for two processes to communicate.
 Hence if there is either no sending or receiving end the channel is non-functional.
+
 
 **Overview of FIFO blocking behavior**
 ```commandline
