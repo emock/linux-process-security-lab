@@ -199,7 +199,7 @@ We model the interaction on the system as follows:
 | dbus_client        | partner_component |
 
 
-Furthermore for this to work the minimal required permissions on DBUS are documented in [com.custom.logger.conf](/labs/05-dbus/02_com.custom.logger.conf)
+Furthermore for this to work the minimal required permissions on DBUS are documented in [com.custom.logger.conf](/labs/06-dbus/02_com.custom.logger.conf)
 
 ```
 <busconfig>
@@ -335,7 +335,7 @@ We model the interaction on the system as follows:
 
 Partner_component acts as partly trusted peer, but also maliciously tries to impersonate as dbus_listener.
 
-This is possible if the configuration contains a misconfiguration such as in [Spoofing](/labs/05-dbus/03_spoofing.conf)
+This is possible if the configuration contains a misconfiguration such as in [Spoofing](/labs/06-dbus/03_spoofing.conf)
 ```
   <policy user="partner_component">
     <allow own="com.custom.logger"/>

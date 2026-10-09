@@ -6,45 +6,6 @@ Privileged bypass mechanisms such as ptrace, capabilities, packet sniffing,
 or explicit FD passing are documented as future work but are out of scope
 for the current threat model.
 
-## Possible Extensions
-
-
-
-### 1. Process Introspection (unpriviliged same user)
-
-- [ ] `/proc` leakage
-  - [ ] environ leakage
-  - [ ] cmdline leakage
-  - [ ] maps / memory layout
-  - [ ] mem access restrictions
-
-### 2. Process Lifecycle / Ressource inheritance
-
-- [ ] fork() / execve()
-  - [ ] inherited file descriptors
-  - [ ] inherited privileges
-  - [ ] FD_CLOEXEC
-  - [ ] exec restrictions
-
-### 3. IPC / Networking - intentended rocess interaction
-
-- [ ] SCM_RIGHTS / FD passing
-- [ ] UDS trust / routing model
-- [ ] local routing abuse
-- [ ] process-to-process communication
-
-### 4. Privileged Local Attacker
-
-- [ ] Linux Capabilities
-  - [ ] CAP_SYS_PTRACE
-  - [ ] CAP_NET_RAW / sniffing
-  - [ ] CAP_KILL
-  - [ ] CAP_NET_BIND_SERVICE
-  - [ ] CAP_SYS_ADMIN
-
-- [ ] ptrace / gdb
-- [ ] pidfd_getfd()
-- [ ] root-based socket introspection
 
 ## Technical Background
 
@@ -115,8 +76,9 @@ dr-xr-xr-x   3 dev  dev  0 Jun  2 09:11 task
 -r--r--r--   1 dev  dev  0 Jun  2 09:11 wchan
 
 ```
-
-The above shows an extract from process fd_visibility.
+In this lab we will focus on the file handles as these are the "gateways" to accessing a ressource, such as
+a file, a socket or a pipe. These in turn we want to investigate later, how these can be protected using
+standard security mechanisms.
 
 We can see in directory /proc/{PID}/fd the currently used File Descriptors which 
 the process is using.
@@ -138,10 +100,6 @@ consecutive entries point to used files and resources, such as a file or a socke
 Access to /proc/{pid}/fd is governed by procfs permissions and Linux process access checks. 
 Same-user access is typically allowed, while other users are blocked unless 
 elevated privileges are present (e.g. root or ptrace-like permissions).
-
-[//]: # (root kann drüber)
-[//]: # (ptrace restrictions &#40;Yama&#41; spielen mit rein)
-[//]: # (Distribution-Hardening kann Verhalten ändern)
 
 
 While Linux exposes many resources through file-like interfaces,
@@ -360,6 +318,45 @@ Permission Denied
 > Summary
 >> Processes from the same user can read out File Descriptors of same-user processes. <br>
 >> Processes from other users cannot access the File Descriptors.
+
+## Possible Extensions
+
+### 1. Process Introspection (unpriviliged same user)
+
+- [ ] `/proc` leakage
+  - [ ] environ leakage
+  - [ ] cmdline leakage
+  - [ ] maps / memory layout
+  - [ ] mem access restrictions
+
+### 2. Process Lifecycle / Ressource inheritance
+
+- [ ] fork() / execve()
+  - [ ] inherited file descriptors
+  - [ ] inherited privileges
+  - [ ] FD_CLOEXEC
+  - [ ] exec restrictions
+
+### 3. IPC / Networking - intentended rocess interaction
+
+- [ ] SCM_RIGHTS / FD passing
+- [ ] UDS trust / routing model
+- [ ] local routing abuse
+- [ ] process-to-process communication
+
+### 4. Privileged Local Attacker
+
+- [ ] Linux Capabilities
+  - [ ] CAP_SYS_PTRACE
+  - [ ] CAP_NET_RAW / sniffing
+  - [ ] CAP_KILL
+  - [ ] CAP_NET_BIND_SERVICE
+  - [ ] CAP_SYS_ADMIN
+
+- [ ] ptrace / gdb
+- [ ] pidfd_getfd()
+- [ ] root-based socket introspection
+
 
 
 
