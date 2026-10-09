@@ -10,72 +10,23 @@ for the current threat model.
 ## Technical Background
 
 Each process stores process information in the path 
-`/proc/{pid}/`
+`/proc/{pid}/`.
+The output has been redacted.
 
 ```commandline
-dev@dev:/proc/87952$ ls -al
-total 0
-dr-xr-xr-x   9 dev  dev  0 Jun  2 08:59 .
-dr-xr-xr-x 210 root root 0 Mar 12 15:02 ..
--r--r--r--   1 dev  dev  0 Jun  2 09:11 arch_status
-dr-xr-xr-x   2 dev  dev  0 Jun  2 09:02 attr
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 autogroup
--r--------   1 dev  dev  0 Jun  2 09:11 auxv
--r--r--r--   1 dev  dev  0 Jun  2 09:11 cgroup
---w-------   1 dev  dev  0 Jun  2 09:11 clear_refs
--r--r--r--   1 dev  dev  0 Jun  2 09:11 cmdline
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 comm
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 coredump_filter
--r--r--r--   1 dev  dev  0 Jun  2 09:11 cpu_resctrl_groups
--r--r--r--   1 dev  dev  0 Jun  2 09:11 cpuset
-lrwxrwxrwx   1 dev  dev  0 Jun  2 09:11 cwd -> /tmp
--r--------   1 dev  dev  0 Jun  2 09:11 environ
-lrwxrwxrwx   1 dev  dev  0 Jun  2 09:11 exe -> /usr/bin/python3.12
-dr-x------   2 dev  dev  5 Jun  2 08:59 fd
-dr-xr-xr-x   2 dev  dev  0 Jun  2 09:11 fdinfo
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 gid_map
--r--------   1 dev  dev  0 Jun  2 09:11 io
--r--------   1 dev  dev  0 Jun  2 09:11 ksm_merging_pages
--r--------   1 dev  dev  0 Jun  2 09:11 ksm_stat
--r--r--r--   1 dev  dev  0 Jun  2 09:11 latency
--r--r--r--   1 dev  dev  0 Jun  2 09:11 limits
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 loginuid
-dr-x------   2 dev  dev  0 Jun  2 09:11 map_files
--r--r--r--   1 dev  dev  0 Jun  2 09:11 maps
--rw-------   1 dev  dev  0 Jun  2 09:11 mem
--r--r--r--   1 dev  dev  0 Jun  2 09:11 mountinfo
--r--r--r--   1 dev  dev  0 Jun  2 09:11 mounts
--r--------   1 dev  dev  0 Jun  2 09:11 mountstats
-dr-xr-xr-x  55 dev  dev  0 Jun  2 09:11 net
-dr-x--x--x   2 dev  dev  0 Jun  2 09:11 ns
--r--r--r--   1 dev  dev  0 Jun  2 09:11 numa_maps
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 oom_adj
--r--r--r--   1 dev  dev  0 Jun  2 09:11 oom_score
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 oom_score_adj
--r--------   1 dev  dev  0 Jun  2 09:11 pagemap
--r--------   1 dev  dev  0 Jun  2 09:11 patch_state
--r--------   1 dev  dev  0 Jun  2 09:11 personality
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 projid_map
-lrwxrwxrwx   1 dev  dev  0 Jun  2 09:11 root -> /
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 sched
--r--r--r--   1 dev  dev  0 Jun  2 09:11 schedstat
--r--r--r--   1 dev  dev  0 Jun  2 09:11 sessionid
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 setgroups
--r--r--r--   1 dev  dev  0 Jun  2 09:11 smaps
--r--r--r--   1 dev  dev  0 Jun  2 09:11 smaps_rollup
--r--------   1 dev  dev  0 Jun  2 09:11 stack
--r--r--r--   1 dev  dev  0 Jun  2 09:02 stat
--r--r--r--   1 dev  dev  0 Jun  2 09:11 statm
--r--r--r--   1 dev  dev  0 Jun  2 09:11 status
--r--------   1 dev  dev  0 Jun  2 09:11 syscall
-dr-xr-xr-x   3 dev  dev  0 Jun  2 09:11 task
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 timens_offsets
--r--r--r--   1 dev  dev  0 Jun  2 09:11 timers
--rw-rw-rw-   1 dev  dev  0 Jun  2 09:11 timerslack_ns
--rw-r--r--   1 dev  dev  0 Jun  2 09:11 uid_map
--r--r--r--   1 dev  dev  0 Jun  2 09:11 wchan
-
+/proc/<pid>/
+├── attr/ — Linux Security Module attributes, including process security contexts.
+├── fd/  — Open file descriptors
+├── fdinfo/ — File descriptor metadata
+├── cmdline — Command-line arguments
+├── environ — Process environment
+├── maps — Memory mappings
+├── mem — Process memory access
+├── status — Process identity, capabilities, security state
+├── syscall — Current system call and registers
+└── cgroup — Control group membership
 ```
+
 In this lab we will focus on the file handles as these are the "gateways" to accessing a ressource, such as
 a file, a socket or a pipe. These in turn we want to investigate later, how these can be protected using
 standard security mechanisms.
@@ -132,18 +83,19 @@ through MAC systems or procfs hardening.
 
 
 
-Kernel-managed IPC handles, such as sockets (TCP/UDP), UDS, pipes (special case), epoll, or eventfd are working differently.
-While the DAC permissions are still a prerequisite to access information about the existence of this socket, 
-it is not sufficient to read out the contents.
-Kernel IPC handles (e.g. sockets) add another boundary:
-**Handle ownership**
+Kernel-managed IPC resources, such as TCP/UDP sockets, Unix domain sockets, pipes, `eventfd`, and `epoll`, behave
+differently from regular files.
 
-The process needs to hold a valid reference in its own FD table
-The Linux kernel opens a socket object for each TCP socket with a recv queue, send queue, TCP State or
-Buffers.
+Unlike regular files, existing sockets cannot generally be reopened through a filesystem path.
 
-In order to access this socket from user-space a process needs to possess a valid reference
-to the file descriptor pointing to the socket object using the API `recv(fd)`.
+To access an existing socket, a process must hold a valid file descriptor referencing the socket object in its own file
+descriptor table.
+
+The Linux kernel manages the underlying socket object, including its receive and send buffers and protocol state. When a
+process calls `recv(fd)`, the kernel resolves the descriptor in the calling process's FD table and accesses the
+corresponding socket.
+
+Visibility through `/proc/<pid>/fd` does not automatically provide access to the underlying socket.
 
 ```commandline
 current process
@@ -155,15 +107,13 @@ resolve socket object
 copy bytes from kernel to user space
 ```
 
-The kernel owns the socket object.
-A process only owns a reference (file descriptor) to it.
-Access to the socket requires the process to possess a valid FD in its own FD table.
-/proc/<pid>/fd exposes visibility, but does not automatically grant ownership or re-opening of kernel IPC objects.
 
-Summary
-> Sockets add another security layer to DAC: Handle Ownership
+**Summary**
 
-> Visibility of a kernel object does not imply ownership or usability of that object.
+> Access to an existing socket requires a valid file descriptor referencing that socket.
+
+> Visibility of a kernel object does not imply the ability to access or use it.
+
 
 
 ## Results Reading out File Descriptors
