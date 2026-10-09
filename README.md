@@ -20,6 +20,10 @@ The following provides an overview of the labs and correlation to DAC:
 | 06  | DBUS                  | Indirect      | Bus policy       |
 | 07  | Network sockets (UDP) | None          | capabilities     |
 
+
+The labs directory contains a short README with instructions on how to setup the labs.
+The READUP in the docs folder summarizes the results and elaborates on the technical background. 
+
 ---
 
 # Future Extensions

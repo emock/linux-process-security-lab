@@ -123,47 +123,24 @@ Kernel returns fd=3
 Handle-basiert
 ```
 
-File-backed handles:
-- normal files
-- deleted files
-- tmpfs files
-- device files
-- FIFOs
-- some memfd/shared-memory-backed files
-- stdio redirection
-
-This can be risky if a second process from the same user tries to access 
-the /proc entries of another PID.
+File-backed handles, such as normal files, deleted files, tmpfs files, device files, FIFOs, some memfd/shared-memory-backed files
+stdio redirection may be accessible for a process running under the same user.
 This matches with the Linux Security view that same-user processes are within the same Trust Boundary.
-
 >Note: This behavior may be undesirable in hardened environments and can be restricted further 
 through MAC systems or procfs hardening.
 
 
 
 
-Kernel-managed IPC handles, such as
-
-- TCP sockets
-- UDP sockets
-- UDS
-- pipes (special case)
-- epoll
-- eventfd
-
-are working differently.
-
-While the DAC permissions are still a prerequisite to access information 
-about the existence of this socket, it is not sufficient to read out the contents.
+Kernel-managed IPC handles, such as sockets (TCP/UDP), UDS, pipes (special case), epoll, or eventfd are working differently.
+While the DAC permissions are still a prerequisite to access information about the existence of this socket, 
+it is not sufficient to read out the contents.
 Kernel IPC handles (e.g. sockets) add another boundary:
-Handle ownership.
+**Handle ownership**
 
 The process needs to hold a valid reference in its own FD table
-The Linux kernel opens a socket object for each TCP socket with a 
-- recv queue
-- send queue
-- TCP State
-- Buffers
+The Linux kernel opens a socket object for each TCP socket with a recv queue, send queue, TCP State or
+Buffers.
 
 In order to access this socket from user-space a process needs to possess a valid reference
 to the file descriptor pointing to the socket object using the API `recv(fd)`.
@@ -187,87 +164,6 @@ Summary
 > Sockets add another security layer to DAC: Handle Ownership
 
 > Visibility of a kernel object does not imply ownership or usability of that object.
-
-
-
-## Further Topics
-
-### File Descriptor Sharing
-
-File descriptors are process-local integers, but multiple processes may reference the same kernel object through shared
-entries in the open file table.
-
-Ways to share:
-```commandline
-fork() inheritance
-dup()/dup2()
-SCM_RIGHTS
-```
-
-Security relevance:
-
-File descriptor leakage may unintentionally grant access to privileged resources.
-
-### Additional /proc leakage vectors
-
-Examples:
-
-/proc/pid/environ
-
-may expose:
-```commandline
-API keys
-tokens
-credentials
-
-```
-
-/proc/pid/cmdline
-
-may expose:
-```commandline
-passwords passed via CLI
-debug secrets
-```
-
-/proc/pid/maps
-
-shows:
-
-``` 
-loaded libraries
-memory layout
-```
-
-/proc/pid/mem
-
-may enable:
-```commandline
-memory inspection
-```
-(subject to ptrace permissions)
-
-
-### Extending the default local Security 
-
-This section elaborates how to get access to a socket object as a local process.
-
-This is possible using:
-
-1. Kernel privileges by getting `root` or `CAP_SYS_PTRACE`
-Then one can do
-
-```commandline
-fd dup
-pidfd_getfd
-ptrace
-```
-
-2. Forwarding the FD using SCM_RIGHTS 
-
-3. Sniffing on the network interface getting 'root' or 'CAP_NET_RAW'
-
-
 
 
 ## Results Reading out File Descriptors
@@ -315,70 +211,6 @@ Opening FD of foreign Process 87952
 Permission Denied
 ```
 
-> Summary
->> Processes from the same user can read out File Descriptors of same-user processes. <br>
->> Processes from other users cannot access the File Descriptors.
-
-## Possible Extensions
-
-### 1. Process Introspection (unpriviliged same user)
-
-- [ ] `/proc` leakage
-  - [ ] environ leakage
-  - [ ] cmdline leakage
-  - [ ] maps / memory layout
-  - [ ] mem access restrictions
-
-### 2. Process Lifecycle / Ressource inheritance
-
-- [ ] fork() / execve()
-  - [ ] inherited file descriptors
-  - [ ] inherited privileges
-  - [ ] FD_CLOEXEC
-  - [ ] exec restrictions
-
-### 3. IPC / Networking - intentended rocess interaction
-
-- [ ] SCM_RIGHTS / FD passing
-- [ ] UDS trust / routing model
-- [ ] local routing abuse
-- [ ] process-to-process communication
-
-### 4. Privileged Local Attacker
-
-- [ ] Linux Capabilities
-  - [ ] CAP_SYS_PTRACE
-  - [ ] CAP_NET_RAW / sniffing
-  - [ ] CAP_KILL
-  - [ ] CAP_NET_BIND_SERVICE
-  - [ ] CAP_SYS_ADMIN
-
-- [ ] ptrace / gdb
-- [ ] pidfd_getfd()
-- [ ] root-based socket introspection
-
-
-
-
-
-[//]: # (Outlook: )
-
-[//]: # ()
-[//]: # (dev@dev:~$ sudo tcpdump -i any port 8080 -X)
-
-[//]: # ()
-[//]: # (```commandline)
-
-[//]: # (12:44:59.739850 lo In IP ubuntu-24.04-server-testing.shared.33348 > ubuntu-24.04-server-testing.shared.http-alt:)
-
-[//]: # (Flags [P.], seq 12:23, ack 1, win 512, options [nop,nop,TS val 3020704275 ecr 3020694273], length 11: HTTP)
-
-[//]: # (0x0000:  4500 003f 8253 4000 4006 347e 0ad3 3721 E..?.S@.@.4~..7!)
-
-[//]: # (0x0010:  0ad3 3721 8244 1f90 babc 8a66 206d 39a1 ..7!.D.....f.m9.)
-
-[//]: # (0x0020:  8018 0200 8419 0000 0101 080a b40c 4a13 ..............J.)
-
-[//]: # (0x0030:  b40c 2301 544f 505f 5345 4352 4554 0a ..#.TOP_SECRET.)
-
-[//]: # (```)
+> **Summary** <br>
+> Processes from the same user can read out File Descriptors of same-user processes. <br> 
+> Processes from other users cannot access the File Descriptors.

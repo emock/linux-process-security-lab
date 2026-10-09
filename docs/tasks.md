@@ -25,7 +25,122 @@
 - [ ] SCM_RIGHTS / FD passing
 - [x] UDS trust/routing model
 
+### 1. Process Introspection (unpriviliged same user)
 
+- [ ] `/proc` leakage
+  - [ ] environ leakage
+  - [ ] cmdline leakage
+  - [ ] maps / memory layout
+  - [ ] mem access restrictions
+
+### 2. Process Lifecycle / Ressource inheritance
+
+- [ ] fork() / execve()
+  - [ ] inherited file descriptors
+  - [ ] inherited privileges
+  - [ ] FD_CLOEXEC
+  - [ ] exec restrictions
+
+### 3. IPC / Networking - intentended rocess interaction
+
+- [ ] SCM_RIGHTS / FD passing
+- [ ] UDS trust / routing model
+- [ ] local routing abuse
+- [ ] process-to-process communication
+
+### 4. Privileged Local Attacker
+
+- [ ] Linux Capabilities
+  - [ ] CAP_SYS_PTRACE
+  - [ ] CAP_NET_RAW / sniffing
+  - [ ] CAP_KILL
+  - [ ] CAP_NET_BIND_SERVICE
+  - [ ] CAP_SYS_ADMIN
+
+- [ ] ptrace / gdb
+- [ ] pidfd_getfd()
+- [ ] root-based socket introspection
+
+## Further Topics
+
+### File Descriptor Sharing
+
+File descriptors are process-local integers, but multiple processes may reference the same kernel object through shared
+entries in the open file table.
+
+Ways to share:
+
+```commandline
+fork() inheritance
+dup()/dup2()
+SCM_RIGHTS
+```
+
+Security relevance:
+
+File descriptor leakage may unintentionally grant access to privileged resources.
+
+### Additional /proc leakage vectors
+
+Examples:
+
+/proc/pid/environ
+
+may expose:
+
+```commandline
+API keys
+tokens
+credentials
+
+```
+
+/proc/pid/cmdline
+
+may expose:
+
+```commandline
+passwords passed via CLI
+debug secrets
+```
+
+/proc/pid/maps
+
+shows:
+
+``` 
+loaded libraries
+memory layout
+```
+
+/proc/pid/mem
+
+may enable:
+
+```commandline
+memory inspection
+```
+
+(subject to ptrace permissions)
+
+### Extending the default local Security
+
+This section elaborates how to get access to a socket object as a local process.
+
+This is possible using:
+
+1. Kernel privileges by getting `root` or `CAP_SYS_PTRACE`
+   Then one can do
+
+```commandline
+fd dup
+pidfd_getfd
+ptrace
+```
+
+2. Forwarding the FD using SCM_RIGHTS
+
+3. Sniffing on the network interface getting 'root' or 'CAP_NET_RAW'
 
     
 # lab-05-dbus
@@ -40,7 +155,7 @@
 
 # Networking VM-based 
 
-> Keep it the ideas here as a note but implement in different project
+> Keep the ideas here as a note but implement in different project
 
 Dein Grundgedanke ist gut, aber ich würde die Lab-Struktur nicht primär an Interfaces festmachen, sondern an *
 *Angreiferposition, Beobachtbarkeit und Kontrolle über den Kommunikationspfad**.
