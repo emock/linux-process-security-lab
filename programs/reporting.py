@@ -5,7 +5,7 @@ OPERATION = "create"
 OTAG = "X"
 
 # Directory mit JSON Ergebnissen
-result_dir = Path("docs/03-directory-permissions")
+result_dir = Path("docs/02-directory-permissions")
 
 
 

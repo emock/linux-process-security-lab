@@ -13,8 +13,8 @@ The following provides an overview of the labs and correlation to DAC:
 | Lab | Resource              | DAC relevance | Other mechanisms |
 |-----|-----------------------|---------------|------------------|
 | 01  | Processes (/proc)     | Partial       | ptrace checks    |
-| 02  | Files                 | Primary       | ACLs             |
-| 03  | Directories           | Primary       | ACLs             |
+| 02  | Directories           | Primary       | ACLs             |
+| 03  | Files                 | Primary       | ACLs             |
 | 04  | Named pipes           | Primary       | none             |
 | 05  | Unix sockets          | Primary       | SO_PEERCRED      |
 | 06  | DBUS                  | Indirect      | Bus policy       |
