@@ -6,6 +6,9 @@
 
 # lab-01-process-isolation
 
+
+- [ ] extend ptrace e.g. /proc/pid/fd 
+
 - [ ] Add Capabilities
   - [ ] CAP_SYS_PTRACE: allows strace, gdb attach, ptrace
   - [ ] CAP_SYS_ADMIN: root-like
@@ -782,6 +785,56 @@ ptrace
 2. Forwarding the FD using SCM_RIGHTS
 
 3. Sniffing on the network interface getting 'root' or 'CAP_NET_RAW'
+
+# lab-02-file-permissions
+
+[ ] Symlink Attack
+
+[//]: # (Attacker ersetzt:)
+
+[//]: # ()
+[//]: # (config.json)
+
+[//]: # ()
+[//]: # (durch)
+
+[//]: # ()
+[//]: # (symlink)
+
+[//]: # ()
+[//]: # (z.B.)
+
+[//]: # ()
+[//]: # (config.json -> /etc/passwd)
+
+[//]: # ()
+[//]: # (Wenn dein Programm blind öffnet:)
+
+[//]: # ()
+[//]: # (open&#40;config.json&#41;)
+
+[//]: # ()
+[//]: # (→ mögliches Problem.)
+
+[//]: # ()
+[//]: # (Das ist eine klassische TOCTOU / Symlink Attack Surface.)
+
+[ ] Sticky Bit Directory
+
+[//]: # (Wenn Directory:)
+
+[//]: # (/tmp)
+
+[//]: # (mit:)
+
+[//]: # (drwxrwxrwt)
+
+[//]: # ()
+[//]: # (Dann kann ein User nicht einfach Files anderer löschen.)
+
+[//]: # ()
+[//]: # (Das ist ein klassisches POSIX Szenario.)
+
 
     
 # lab-05-dbus

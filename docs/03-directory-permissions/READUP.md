@@ -2,9 +2,9 @@
 
 # Overview
 
+## Technical Background
 
-
-## Overview of Syscalls
+### Overview of Syscalls
 
 | Operation   | Syscall               |
 | ----------- | --------------------- |
@@ -14,15 +14,26 @@
 | delete      | `unlinkat`            |
 | mkdir       | `mkdirat`             |
 
-
 strace -e trace=file python3 test.py 2>&1 | grep openat
 
 Options:
 strace outputs by default on STDERR - using 2>&1 we can redirect it to STDOUT and use grep with coloring.
-The parameters -e (only relevant syscalls) and -f (no follow children) help to reduce the scope to 
+The parameters -e (only relevant syscalls) and -f (no follow children) help to reduce the scope to
 filesystem scope.
 
-## Technical Background
+### Implications of Directory Permission Bits
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ### Directory Basics 
@@ -48,6 +59,15 @@ A central observation is that directory permissions and file permissions protect
 - directories control visibility, traversal and modification of names
 - files control access to file contents
 
+For directories, the permission bits have the following meanings:
+
+| Bit   | Meaning                                               |
+| ----- | ----------------------------------------------------- |
+| **r** | List the contents of a directory (`ls`)               |
+| **w** | Change directory entries (create/delete/rename files) |
+| **x** | Traverse the directory (`cd`)                         |
+
+
 
 ### Read Permission
 The **Unix Read Permission (r)** on a directory grants access to read the file descriptor table.
@@ -64,6 +84,32 @@ As a general rule of thumb, using tab complete in a terminal on directory with a
 read permission will work.
 
 The metadata of the file, such as group, owner, file size are stored in the referenced Inode.
+
+#### Case: `r` Without `x`
+
+If a directory only has **read permissions** set:
+
+```
+r--r--r--
+```
+
+Then listing the contents using:
+
+```
+ls dir
+```
+
+is possible.
+
+However, it will **not** be possible to traverse the directory because the execute bit is missing.
+
+```
+cd dir
+cat dir/file.txt
+```
+
+
+
 
 ### Execute Permission
 
@@ -136,6 +182,33 @@ total 16
 ```
 
 Consequently, in order to resolve metadata the name of the file is required as a prerequisite. 
+
+#### Case: `x` Without `r`
+
+If a directory only has **execute permissions** set:
+
+```
+--x--x--x
+```
+
+Then traversing the directory is possible:
+
+```
+cd dir
+cat dir/file.txt
+```
+
+**if the filename is already known.**
+
+However, listing the directory contents will fail:
+
+```
+ls dir
+```
+
+because read permissions are missing.
+
+
 
 
 ### Write Permission

@@ -51,6 +51,15 @@ consecutive entries point to used files and resources, such as a file or a socke
 Access to /proc/{pid}/fd is governed by procfs permissions and Linux process access checks. 
 Same-user access is typically allowed, while other users are blocked unless 
 elevated privileges are present (e.g. root or ptrace-like permissions).
+Besides traditional DAC permissions, Linux applies additional process-specific access checks to certain `/proc`
+interfaces.
+
+For example, reading the symbolic links in `/proc/<pid>/fd` requires a `PTRACE_MODE_READ_FSCREDS` access check. This
+check considers process credentials (UID/GID), the target process's dumpable state, capabilities, and applicable Linux
+Security Module (LSM) restrictions.
+
+Therefore, matching UID/GID values alone do not guarantee access to another process's file descriptors.
+
 
 
 While Linux exposes many resources through file-like interfaces,
