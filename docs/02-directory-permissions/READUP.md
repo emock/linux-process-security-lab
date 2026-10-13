@@ -24,10 +24,9 @@ filesystem scope.
 ### Implications of Directory Permission Bits
 
 
-
-
-
-
+[//]: # (TODO) Add to readup from lab file permission
+* if the **directory permissions allow modification** a file can still be deleted, replaced, renamed even if
+  the permissions of the file are set to `600`.
 
 
 
