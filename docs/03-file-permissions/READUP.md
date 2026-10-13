@@ -29,17 +29,21 @@ i_mode
 
 The permission bits (`rwx`) are stored inside **`i_mode`**.
 
+For regular files, read (r), write (w), and execute (x) permissions are evaluated independently. Unlike directories,
+execute permission is not required to read or write a file. A file may therefore be writable without being readable, or
+readable without being writable
+
 The kernel evaluates the permissions conceptually similar to the following pseudo-code:
 
 ```python
-if uid == file_owner:
+if file_owner == uid:
   use owner bits
-elif gid in file_group or supplementary_groups:
+elif file_group in process_groups:
   use group bits
 else:
   use others bits
 ````
-Group checks include both the primary group **and** all supplementary groups of the process.
+`process_groups` includes both the primary group **and** all supplementary groups of the process.
 
 #### Example
 
@@ -55,7 +59,8 @@ Hence the user `dev` will only have read access on the file.
 The permission classes are **mutually exclusive** and not **additive**
 
 
-### Time of check, Time of use
+
+### Permission Checks at open()
 Permissions are checked once when the file descriptor is created with `open()`.
 Subsequent `read()` or `write()` operations do not re-evaluate file permissions._
 
@@ -71,6 +76,10 @@ read(fd)
 
 
 ## Results
+
+The operations read and write have been evaluated in dedicated tests.
+Both follow the same permission-class selection logic, but evaluate their respective permission bits.
+Since the tested scenarios yield identical results, these have been merged into one table.
 
 ## Overview of Read and Write Permissions
 
