@@ -64,30 +64,6 @@ The parameter `-e` (only relevant syscalls)  help to reduce the scope to the fil
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## Results Read
 
 
@@ -189,66 +165,41 @@ The following table provides an overview of the results.
 | dev  | /tmp/lab-03-s7-100/config.json | stat | X            |
 | dev  | /tmp/lab-03-s8-000/config.json | stat | N            |
 
-To illustrate the results an output of executing `stat` on a directory having only execute and write permissions,
-effectively missing the `r` bit.
-
-```commandline
-
-dev@dev:/tmp$ stat lab-03-s5-300/config.json 
-  File: lab-03-s5-300/config.json
-  Size: 40        	Blocks: 8          IO Block: 4096   regular file
-Device: 252,0	Inode: 263570      Links: 1
-Access: (0000/----------)  Uid: ( 1000/     dev)   Gid: ( 1001/shared_group)
-Access: 2026-05-27 07:21:06.594196588 +0000
-Modify: 2026-05-27 07:21:06.594196588 +0000
-Change: 2026-05-27 07:21:06.634197292 +0000
- Birth: 2026-05-27 07:21:06.594196588 +0000
- 
-
-
-```
-#### Case: `x` Without `r`
-
-If a directory only has **execute permissions** set:
-
-```
---x--x--x
-```
-
-Then traversing the directory is possible:
-
-```
-cd dir
-cat dir/file.txt
-```
-
-**if the filename is already known.**
-
-However, listing the directory contents will fail:
-
-```
-ls dir
-```
-
-because read permissions are missing.
-
-
-
-
-
-
-
-
-
-
-----
-
-### Execute Permission
 
 The Execute permission (x) on a directory facilitates a lookup/path traversal of known directory entries
 and traverse the path to the target file.
 
-`stat()` is used here as a practical demonstration of this behavior.
+```
+dev@dev:/tmp$ cd lab-03-s7-100/
+dev@dev:/tmp/lab-03-s1-700$ pwd
+/tmp/lab-03-s1-700
+```
+
+While it is not possible to list the contents of the directory, metadata of known file names can be retrieved, despite 
+the fact `config.json` is not accessible for any user.
+
+```commandline
+dev@dev:/tmp$ ls -ai lab-03-s7-100/
+ls: cannot open directory 'lab-03-s7-100/': Permission denied
+
+dev@dev:/tmp$ ls -ai lab-03-s7-100/config.json
+269901 lab-03-s7-100/config.json
+
+dev@dev:/tmp$ stat lab-03-s7-100/config.json
+  File: lab-03-s7-100/config.json
+  Size: 40        	Blocks: 8          IO Block: 4096   regular file
+Device: 252,0	Inode: 269901      Links: 1
+Access: (0000/----------)  Uid: ( 1000/     dev)   Gid: ( 1001/shared_group)
+Access: 2026-09-30 13:37:59.092365193 +0000
+Modify: 2026-09-30 13:37:59.092365193 +0000
+Change: 2026-09-30 13:38:02.376411544 +0000
+ Birth: 2026-09-30 13:37:59.092365193 +0000
+```
+
+This provides the attributes which are commonly of interest for each entry, such as
+size, owner, group and timestamps.
+
+Let's examine in more detail what happens under the hood when calling `stat` on known filename.
 
 ```commandline
 statx(AT_FDCWD, "lab-03-s1-700/config.json", AT_STATX_SYNC_AS_STAT|AT_SYMLINK_NOFOLLOW|AT_NO_AUTOMOUNT, STATX_ALL,
@@ -262,7 +213,7 @@ AT_FDCWD
     ↓
 lookup("lab-03-s1-700")
     ↓
-check x permission
+check x permission 
     ↓
 lookup("config.json")
     ↓
@@ -274,136 +225,18 @@ return metadata
 
 ```
 
-Leading to the following output:
-
-```commandline
-dev@dev:/tmp/lab-03-s1-700$ stat config.json 
-  File: config.json
-  Size: 40        	Blocks: 8          IO Block: 4096   regular file
-Device: 252,0	Inode: 262507      Links: 2
-Access: (0000/----------)  Uid: ( 1000/     dev)   Gid: ( 1001/shared_group)
-Access: 2026-05-27 07:21:06.576196271 +0000
-Modify: 2026-05-27 07:21:06.576196271 +0000
-Change: 2026-05-27 08:13:36.329713579 +0000
- Birth: 2026-05-27 07:21:06.576196271 +0000
-```
-
-This provides the attributes which are commonly of interest for each entry, such as
-size, owner, group and timestamps.
-
-Without Execute permission (x) on the directory, these entries cannot be resolved/looked up, meaning the referenced
+As can be seen from the conceptual flow, without the execute permission (x) on the directory, these entries cannot be resolved/looked up, meaning the referenced
 inode cannot practically be used (e.g., via stat(), open(), cat()).
+
 
 > **Important:**
 >> **Even if a file is globally readable/writable/executable, it is not accessible unless Execute permission (`x`) is
-granted
-on all parent directories required for pathname traversal.**
-
-Using the common ls -lai switch additionally performs a stat(() on each entry of the
-directory. This shows the retrieval of the file metadata.
-
-```commandline
-dev@dev:/tmp/lab-03-s1-700$ ls -lai
-total 16
-262475 drwx------  2 dev  shared_group 4096 May 27 08:13 .
-131074 drwxrwxrwt 34 root root         4096 May 27 07:54 ..
-262507 ----------  2 dev  shared_group   40 May 27 07:21 config.json
-262507 ----------  2 dev  shared_group   40 May 27 07:21 second
-
-
-```
-
-Consequently, in order to resolve metadata the name of the file is required as a prerequisite.
+granted on all parent directories required for pathname traversal.**
 
 
 
-
-----
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Security Considerations
-
-**Blind Access:** Names not visible, but known names usable
-
-Test cases `/tmp/lab-03-s7-100/config.json` and `/tmp/lab-03-s5-300/config.json` demonstrate an important aspect of Unix
-directory semantics: directory listing and file access are intentionally treated as separate concerns.
-
-At first glance, the result may appear counter-intuitive: although directory listing fails, `stat()` executes
-successfully.
-
-This behavior is intentional by design.
-
-In Unix, the Read permission (`r`) on a directory controls whether directory entries (names) can be enumerated. The
-Execute permission (`x`) acts as **search/traversal permission** and determines whether already known directory entries
-can be resolved during pathname traversal.
-
-As a consequence, the absence of Read permission does **not** imply that files inside the directory are inaccessible.
-
-If the filename is already known or can be guessed (e.g., `config.json`, `backup.zip`, `secret.txt`), traversal remains
-possible as long as Execute permission (`x`) is present on the directory.
-
-This enables operations such as:
-
-* `stat()` to retrieve metadata
-* `open()` to access file handles
-* `cat()` to read file contents
-
-provided the permissions of the referenced file allow the operation.
-
-This design reflects a fundamental Unix principle:
-
-> **Enumerating names and accessing known names are separate privileges.**
-
-Consequently, directory confidentiality and file confidentiality should be treated as separate security concerns.
-Preventing directory listing alone does not necessarily prevent access to files within the directory.
-
-
-An equally important observation is the inverse case: missing Execute permission (`x`) on a directory acts as an
-effective access barrier.
-
-Even if files inside the directory are globally readable, writable or executable, they remain inaccessible if pathname
-traversal fails due to missing Execute permission on the parent directory.
-
-This highlights an important Unix principle:
-
-> **File permissions alone do not determine accessibility — successful pathname traversal is required first.**
-
-Common permission pattern in practice are:
-- 711: Known entries are usable
-- 750: Group can read and use entries
-
-
-## Combining Read and Execute
-
-The command `ls -ali` gives an impression which capabilities are available.
-It should be noted that while __ls__ appears to be an atomic operation it is a sequence of operations,
+Although using `ls -ali` appears to be an atomic operation it is a sequence of operations,
 such as read(), permission checks and stat().
-
 
 ```commandline
 
@@ -444,13 +277,56 @@ ls: cannot open directory 'lab-03-s8-000': Permission denied
 
 ```
 
-Interesting observations, summarized from above:
+### Security Considerations
 
-- **Blind Traversal:** s5-300 and s7-100 suggest that no access is possible: 
-However as shown above, **if** the contents of the directory are already known or easily guessable, traversable and information retrievable is possible.
-- s4-400 and s2-600:
-The inode reference is conceptually available from the directory entry. 
-However, GNU `ls` chooses not to expose it without successful path resolution, resulting in ? despite read access to the directory.
+**Blind Access:** Names not visible, but known names usable
+
+Test cases `/tmp/lab-03-s7-100/config.json` and `/tmp/lab-03-s5-300/config.json` demonstrate an important aspect of Unix
+directory semantics: directory listing and file access are intentionally treated as separate concerns.
+
+At first glance, the result may appear counter-intuitive: although directory listing fails, `stat()` executes
+successfully, while one would expect that no access would be possible, as the read permission is missing.
+
+This behavior is intentional by design.
+
+In Unix, the Read permission (`r`) on a directory controls whether directory entries (names) can be enumerated. 
+The Execute permission (`x`) acts as **search/traversal permission** and determines whether already known directory entries
+can be resolved during pathname traversal.
+
+As a consequence, the absence of Read permission does **not** imply that files inside the directory are inaccessible.
+
+If the filename is already known or can be guessed (e.g., `config.json`, `backup.zip`, `secret.txt`), traversal remains
+possible as long as Execute permission (`x`) is present on the directory.
+
+This enables operations such as:
+
+* `stat()` to retrieve metadata
+* `open()` to access file handles
+* `cat()` to read file contents
+
+provided the permissions of the referenced file allow the operation.
+
+This design reflects a fundamental Unix principle:
+
+> **Enumerating names and accessing known names are separate privileges.**
+
+Consequently, directory confidentiality and file confidentiality should be treated as separate security concerns.
+Preventing directory listing alone does not necessarily prevent access to files within the directory.
+
+
+An equally important observation is the inverse case: missing Execute permission (`x`) on a directory acts as an
+effective access barrier.
+
+Even if files inside the directory are globally readable, writable or executable, they remain inaccessible if pathname
+traversal fails due to missing Execute permission on the parent directory.
+
+This highlights an important Unix principle:
+
+> **File permissions alone do not determine accessibility — successful pathname traversal is required first.**
+
+Common permission pattern in practice are:
+- 711: Known entries are usable
+- 750: Group can read and use entries
 
 
 
