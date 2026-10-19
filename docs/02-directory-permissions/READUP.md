@@ -4,40 +4,9 @@
 
 ## Technical Background
 
-### Overview of Syscalls
-
-| Operation   | Syscall               |
-| ----------- | --------------------- |
-| stat        | `statx`, `newfstatat` |
-| create/open | `openat`              |
-| rename      | `renameat2`           |
-| delete      | `unlinkat`            |
-| mkdir       | `mkdirat`             |
-
-strace -e trace=file python3 test.py 2>&1 | grep openat
-
-Options:
-strace outputs by default on STDERR - using 2>&1 we can redirect it to STDOUT and use grep with coloring.
-The parameters -e (only relevant syscalls) and -f (no follow children) help to reduce the scope to
-filesystem scope.
-
-### Implications of Directory Permission Bits
-
-
-[//]: # (TODO) Add to readup from lab file permission
-* if the **directory permissions allow modification** a file can still be deleted, replaced, renamed even if
-  the permissions of the file are set to `600`.
-
-
-
-
-
-
-
-
-### Directory Basics 
-A directory in Unix is a table of names and inode references, best illustrated by 
-ls -ai.
+In Unix a directory represents a table of names and inode references, conveniently illustrated by 
+`ls -ai`. 
+This lists all directory entries including the inode reference.
 
 ```commandline
 dev@dev:/tmp/lab-03-s1-700$ ls -ai
@@ -47,13 +16,13 @@ dev@dev:/tmp/lab-03-s1-700$ ls -ai
 262507 second
 ```
 
-This shows the special directory entries self (.) and parent (..) as well as the 
+The output shows the special directory entries self (.) and parent (..) as well as the 
 child entries of a directory.
 In this case a second file with a different name has been created pointing to the same inode
-as config.json.
+as config.json, as the inode reference is identical.
 The directory structure lists this as a separate item.
 
-A central observation is that directory permissions and file permissions protect different concerns:
+Before going deeper the central observation to keep in mind is that directory permissions and file permissions protect different concerns:
 
 - directories control visibility, traversal and modification of names
 - files control access to file contents
@@ -67,45 +36,34 @@ For directories, the permission bits have the following meanings:
 | **x** | Traverse the directory (`cd`)                         |
 
 
+One important implication follows from this separation of concerns between directory and file access rights.  
+If the **directory permissions allow modification** for an arbitrary user on the system, 
+a file can be deleted, replaced, renamed even if the permissions of the file are set to `600`.
+This might be counter-intuitive as one might expect that the file is only accessible for the owner.
+However, this affects the contents of the file.
 
-### Read Permission
-The **Unix Read Permission (r)** on a directory grants access to read the file descriptor table.
 
-```commandline
-root@dev:/tmp# ls -ai lab-03-s7-100/
-269903 .
-131074 ..
-269930 config.json
-269981 delete.json
-269962 rename_src.json
-```
-As a general rule of thumb, using tab complete in a terminal on directory with active
-read permission will work.
 
-The metadata of the file, such as group, owner, file size are stored in the referenced Inode.
+Unix uses the following Syscalls to implement directory access.
 
-#### Case: `r` Without `x`
+| Operation   | Syscall               |
+| ----------- | --------------------- |
+| stat        | `statx`, `newfstatat` |
+| create/open | `openat`              |
+| rename      | `renameat2`           |
+| delete      | `unlinkat`            |
+| mkdir       | `mkdirat`             |
 
-If a directory only has **read permissions** set:
 
-```
-r--r--r--
-```
+`strace` can be used to explore what is happening under the hood: 
+`strace -e trace=file python3 test.py 2>&1 | grep openat`
 
-Then listing the contents using:
+strace outputs by default on STDERR - using 2>&1 we can redirect it to STDOUT.
+The parameter `-e` (only relevant syscalls)  help to reduce the scope to the filesystem scope.
 
-```
-ls dir
-```
 
-is possible.
 
-However, it will **not** be possible to traverse the directory because the execute bit is missing.
 
-```
-cd dir
-cat dir/file.txt
-```
 
 
 
@@ -114,20 +72,14 @@ cat dir/file.txt
 
 The Execute permission (x) on a directory facilitates a lookup/path traversal of known directory entries
 and traverse the path to the target file.
-Without Execute permission (x) on the directory, these entries cannot be resolved/looked up, meaning the referenced
-inode cannot practically be used (e.g., via stat(), open(), cat()).
 
->**Important:**
->>**Even if a file is globally readable/writable/executable, it is not accessible unless Execute permission (`x`) is granted
-on all parent directories required for pathname traversal.**
-
-
-stat() is used here as a practical demonstration of this behavior.
+`stat()` is used here as a practical demonstration of this behavior.
 
 ```commandline
 statx(AT_FDCWD, "lab-03-s1-700/config.json", AT_STATX_SYNC_AS_STAT|AT_SYMLINK_NOFOLLOW|AT_NO_AUTOMOUNT, STATX_ALL,
 {stx_mask=STATX_ALL|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|000, stx_size=40, ...}) = 0
 ```
+
 Internally the following happens:
 
 ```commandline
@@ -147,9 +99,7 @@ return metadata
 
 ```
 
-
-
-
+Leading to the following output:
 
 ```commandline
 dev@dev:/tmp/lab-03-s1-700$ stat config.json 
@@ -163,8 +113,16 @@ Change: 2026-05-27 08:13:36.329713579 +0000
  Birth: 2026-05-27 07:21:06.576196271 +0000
 ```
 
-This provides the attributes which are commonly of interest for each entry, such as 
+This provides the attributes which are commonly of interest for each entry, such as
 size, owner, group and timestamps.
+
+
+Without Execute permission (x) on the directory, these entries cannot be resolved/looked up, meaning the referenced
+inode cannot practically be used (e.g., via stat(), open(), cat()).
+
+>**Important:**
+>>**Even if a file is globally readable/writable/executable, it is not accessible unless Execute permission (`x`) is granted
+on all parent directories required for pathname traversal.**
 
 Using the common ls -lai switch additionally performs a stat(() on each entry of the
 directory. This shows the retrieval of the file metadata.
@@ -182,6 +140,229 @@ total 16
 
 Consequently, in order to resolve metadata the name of the file is required as a prerequisite. 
 
+
+### Write Permission
+
+The directory write permission in Unix may be summarized as 
+
+> If I can reach the namespace, I **may** mutate it.
+
+In contrast to file write permissions, directory write permissions do not control file content 
+modification. Instead, they control changes to the directory namespace, i.e., the mapping of file names
+to inodes.
+
+In practice, directory write permission in combination with Execute (wx) facilitates the
+following operations:
+- Creation of new files
+- Renaming of existing files
+- Deletion of files
+
+The following section explores, why the execute bit is needed for proper functioning.
+
+Let's first illustrate what happens behind the scenes in each of these cases:
+
+
+Create using **touch dir/newfile**
+
+```commandline
+resolve("dir")
+    ↓
+check x permission
+    ↓
+check w permission
+    ↓
+modify directory entries
+    ↓   
+insert: newfile -> inode 789
+    ↓
+return
+```
+
+Rename using `mv dir/old dir/new`
+
+```commandline
+resolve parent dir
+    ↓
+check x permission
+    ↓
+check w permission
+    ↓
+resolve "old" entry
+    ↓
+create/update: new -> inode 123
+    ↓
+remove: old -> inode 123
+    ↓
+same inode remains referenced
+    ↓
+return
+```
+
+During a rename operation the inode itself remains unchanged. Only the directory entry (name → inode mapping) is
+modified.
+
+Delete using `rm dir/config.json`
+
+```commandline
+resolve("dir")
+    ↓
+check x permission
+    ↓
+check w permission
+    ↓
+resolve("config.json")
+    ↓
+remove entry
+    ↓
+return
+```
+
+As can be seen in all the write operation scenarios multiple `resolve()` steps are involved.
+For this to succeed the execute permission needs to be set in the directory.
+This explains why  `wx` facilitates write operations and write-only `w` does not work.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Results Read
+
+
+The following table provides an overview of the results.
+
+
+
+|USER| FILE                             | OP   | RESULT |
+|----|----------------------------------|------|--------|
+|dev | /tmp/lab-03-s1-700/config.json   | list | X      |
+|dev | /tmp/lab-03-s2-600/config.json   | list | X      |
+|dev | /tmp/lab-03-s3-500/config.json   | list | X      |
+|dev | /tmp/lab-03-s4-400/config.json   | list | X      |
+|dev | /tmp/lab-03-s5-300/config.json   | list | N      |
+|dev | /tmp/lab-03-s6-200/config.json   | list | N      |
+|dev | /tmp/lab-03-s7-100/config.json   | list | N      |
+|dev | /tmp/lab-03-s8-000/config.json   | list | N      |
+
+
+If the read permission is set an entitled entity can read out name and inode:
+
+```commandline
+/tmp/lab-03-s4-400/
+config.json 263431
+```
+#### Case: `r` Without `x`
+
+If a directory only has **read permissions** set, such as in testcase `lab-03-s4-400`
+
+Then listing the contents using:
+
+```
+ls dir
+```
+
+is possible.
+
+However, it will **not** be possible to traverse the directory because the execute bit is missing.
+
+```commandline
+
+dev@dev:/tmp$ stat lab-03-s4-400/config.json 
+stat: cannot statx 'lab-03-s4-400/config.json': Permission denied
+
+```
+
+Hence the output of `ls -ai lab-03-s4-400` appears somewhat scrambled:
+
+
+[//]: # (TODO Add output)
+```commandline
+
+```
+
+### Read Permission
+
+[//]: # (TODO Falsches Directory - das hier ist execute only und user root)
+The **Unix Read Permission (r)** on a directory grants access to read the directory entries.
+
+```commandline
+root@dev:/tmp# ls -ai lab-03-s7-100/
+269903 .
+131074 ..
+269930 config.json
+269981 delete.json
+269962 rename_src.json
+```
+
+As a general rule of thumb, if read access is granted, using tab complete in a terminal on directory with active
+read permission will work.
+
+The metadata of the file, such as group, owner, file size are stored in the referenced Inode.
+Although these are most of the times attached, when using `ls` it should be noted that this represents an aggregated
+view
+of both directory and file information.
+
+### Security Considerations
+
+**Information leakage**: Child entries of directory visible 
+
+Having read permissions on a directory facilitates information disclosure about the names 
+of the files in the directory.
+No further metadata of a file, such as permissions, owner or size can be obtained.
+
+
+
+
+## Results Execute
+
+The following table provides an overview of the results.
+
+| USER | FILE                           | OP   | RESULT       |
+|------|--------------------------------|------|--------------|
+| dev  | /tmp/lab-03-s1-700/config.json | stat | X            |
+| dev  | /tmp/lab-03-s2-600/config.json | stat | N            |
+| dev  | /tmp/lab-03-s3-500/config.json | stat | X            |
+| dev  | /tmp/lab-03-s4-400/config.json | stat | N            |
+| dev  | /tmp/lab-03-s5-300/config.json | stat | X            |
+| dev  | /tmp/lab-03-s6-200/config.json | stat | N            |
+| dev  | /tmp/lab-03-s7-100/config.json | stat | X            |
+| dev  | /tmp/lab-03-s8-000/config.json | stat | N            |
+
+To illustrate the results an output of executing `stat` on a directory having only execute and write permissions,
+effectively missing the `r` bit.
+
+```commandline
+
+dev@dev:/tmp$ stat lab-03-s5-300/config.json 
+  File: lab-03-s5-300/config.json
+  Size: 40        	Blocks: 8          IO Block: 4096   regular file
+Device: 252,0	Inode: 263570      Links: 1
+Access: (0000/----------)  Uid: ( 1000/     dev)   Gid: ( 1001/shared_group)
+Access: 2026-05-27 07:21:06.594196588 +0000
+Modify: 2026-05-27 07:21:06.594196588 +0000
+Change: 2026-05-27 07:21:06.634197292 +0000
+ Birth: 2026-05-27 07:21:06.594196588 +0000
+ 
+
+
+```
 #### Case: `x` Without `r`
 
 If a directory only has **execute permissions** set:
@@ -210,162 +391,7 @@ because read permissions are missing.
 
 
 
-### Write Permission
 
-The directory write permission in Unix may be summarized as 
-
-> If I can reach the namespace, I **may** mutate it.
-
-In contrast to file write permissions, directory write permissions do not control file content 
-modification. Instead, they control changes to the directory namespace, i.e., the mapping of file names
-to inodes.
-
-In practice, directory write permission in combination with Execute (wx) facilitates the
-following operations:
-- Creation of new files
-- Renaming of existing files
-- Deletion of files
-
-The following section explores, why the execute bit is needed for proper functioning.
-
-Let's first illustrate what happens behind the scenes in each of these cases:
-
-
-Create using **touch dir/newfile**
-
-```commandline
-resolve("dir")
-↓
-check x permission
-↓
-check w permission
-↓
-modify directory entries
-↓
-insert:
-newfile -> inode 789
-↓
-return
-```
-
-Rename using `mv dir/old dir/new`
-
-```commandline
-resolve parent dir
-↓
-check x permission
-↓
-check w permission
-↓
-resolve "old" entry
-↓
-create/update:
-new -> inode 123
-↓
-remove:
-old -> inode 123
-↓
-same inode remains referenced
-↓
-return
-```
-
-During a rename operation the inode itself remains unchanged. Only the directory entry (name → inode mapping) is
-modified.
-
-Delete using `rm dir/config.json`
-
-```commandline
-resolve("dir")
-↓
-check x permission
-↓
-check w permission
-↓
-resolve("config.json")
-↓
-remove entry
-↓
-return
-```
-
-As can be seen in all the write operation scenarios multiple `resolve()` steps are involved.
-For this to succeed the execute permission needs to be set in the directory.
-This explains why  `wx` facilitates write operations and while write-only `w` does not work.
-
-
-## Results Read
-
-
-The following table provides an overview of the results.
-
-
-
-|USER| FILE                             | OP   | RESULT |
-|----|----------------------------------|------|--------|
-|dev | /tmp/lab-03-s1-700/config.json   | list | X      |
-|dev | /tmp/lab-03-s2-600/config.json   | list | X      |
-|dev | /tmp/lab-03-s3-500/config.json   | list | X      |
-|dev | /tmp/lab-03-s4-400/config.json   | list | X      |
-|dev | /tmp/lab-03-s5-300/config.json   | list | N      |
-|dev | /tmp/lab-03-s6-200/config.json   | list | N      |
-|dev | /tmp/lab-03-s7-100/config.json   | list | N      |
-|dev | /tmp/lab-03-s8-000/config.json   | list | N      |
-
-
-If the read permission is set an entitled entity can read out name and inode:
-
-```commandline
-/tmp/lab-03-s4-400/
-config.json 263431
-```
-
-
-### Security Considerations
-
-**Information leakage**: Child entries of directory visible 
-
-Having read permissions on a directory facilitates information disclosure about the names 
-of the files in the directory.
-No further metadata of a file, such as permissions, owner or size can be obtained.
-
-
-
-
-## Results Execute
-
-The following table provides an overview of the results.
-
-| USER | FILE                           | OP   | RESULT       |
-|------|--------------------------------|------|--------------|
-| dev  | /tmp/lab-03-s1-700/config.json | stat | X            |
-| dev  | /tmp/lab-03-s2-600/config.json | stat | N            |
-| dev  | /tmp/lab-03-s3-500/config.json | stat | X            |
-| dev  | /tmp/lab-03-s4-400/config.json | stat | N            |
-| dev  | /tmp/lab-03-s5-300/config.json | stat | X            |
-| dev  | /tmp/lab-03-s6-200/config.json | stat | N            |
-| dev  | /tmp/lab-03-s7-100/config.json | stat | X            |
-| dev  | /tmp/lab-03-s8-000/config.json | stat | N            |
-
-```commandline
-
-dev@dev:/tmp$ stat lab-03-s5-300/config.json 
-  File: lab-03-s5-300/config.json
-  Size: 40        	Blocks: 8          IO Block: 4096   regular file
-Device: 252,0	Inode: 263570      Links: 1
-Access: (0000/----------)  Uid: ( 1000/     dev)   Gid: ( 1001/shared_group)
-Access: 2026-05-27 07:21:06.594196588 +0000
-Modify: 2026-05-27 07:21:06.594196588 +0000
-Change: 2026-05-27 07:21:06.634197292 +0000
- Birth: 2026-05-27 07:21:06.594196588 +0000
-dev@dev:/tmp$ stat lab-03-s4-400/config.json 
-stat: cannot statx 'lab-03-s4-400/config.json': Permission denied
-
-```
-
-### Security Considerations
-
-**Blind Access:** Names not visible, but known names usable
 
 ### Security Considerations
 
@@ -421,14 +447,9 @@ Common permission pattern in practice are:
 
 ## Combining Read and Execute
 
-The command ls -ali gives an impression which capabilities are available.
+The command `ls -ali` gives an impression which capabilities are available.
 It should be noted that while __ls__ appears to be an atomic operation it is a sequence of operations,
 such as read(), permission checks and stat().
-
-
-
-
-
 
 
 ```commandline
@@ -475,10 +496,8 @@ Interesting observations, summarized from above:
 - **Blind Traversal:** s5-300 and s7-100 suggest that no access is possible: 
 However as shown above, **if** the contents of the directory are already known or easily guessable, traversable and information retrievable is possible.
 - s4-400 and s2-600:
-The inode reference is conceptually available from the directory entry. However, GNU ls chooses not to expose it
-  without successful path resolution, resulting in ? despite read access to the directory.
-
-
+The inode reference is conceptually available from the directory entry. 
+However, GNU `ls` chooses not to expose it without successful path resolution, resulting in ? despite read access to the directory.
 
 
 
