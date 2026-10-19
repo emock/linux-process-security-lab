@@ -171,8 +171,8 @@ and traverse the path to the target file.
 
 ```
 dev@dev:/tmp$ cd lab-03-s7-100/
-dev@dev:/tmp/lab-03-s1-700$ pwd
-/tmp/lab-03-s1-700
+dev@dev:/tmp/lab-03-s7-100$ pwd
+/tmp/lab-03-s7-100
 ```
 
 While it is not possible to list the contents of the directory, metadata of known file names can be retrieved, despite 
@@ -202,26 +202,30 @@ size, owner, group and timestamps.
 Let's examine in more detail what happens under the hood when calling `stat` on known filename.
 
 ```commandline
-statx(AT_FDCWD, "lab-03-s1-700/config.json", AT_STATX_SYNC_AS_STAT|AT_SYMLINK_NOFOLLOW|AT_NO_AUTOMOUNT, STATX_ALL,
+statx(AT_FDCWD, "lab-03-s7-100/config.json", AT_STATX_SYNC_AS_STAT|AT_SYMLINK_NOFOLLOW|AT_NO_AUTOMOUNT, STATX_ALL,
 {stx_mask=STATX_ALL|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|000, stx_size=40, ...}) = 0
 ```
 
 Internally the following happens:
 
 ```commandline
-AT_FDCWD
+statx(AT_FDCWD, "lab-03-s7-100/config.json")
     ↓
-lookup("lab-03-s1-700")
+Start at current working directory (/tmp)
     ↓
-check x permission 
+Check search permission (x) on /tmp
     ↓
-lookup("config.json")
+Lookup "lab-03-s7-100"
     ↓
-check x permission
+Check search permission (x) on lab-03-s7-100
+    ↓
+Lookup "config.json"
     ↓
 inode found
     ↓
-return metadata
+Return file metadata
+
+
 
 ```
 
@@ -281,19 +285,16 @@ ls: cannot open directory 'lab-03-s8-000': Permission denied
 
 **Blind Access:** Names not visible, but known names usable
 
-Test cases `/tmp/lab-03-s7-100/config.json` and `/tmp/lab-03-s5-300/config.json` demonstrate an important aspect of Unix
-directory semantics: directory listing and file access are intentionally treated as separate concerns.
+In Unix, the Read permission (`r`) on a directory controls whether directory entries (names) can be enumerated.
+The Execute permission (`x`) acts as **search/traversal permission** and determines whether already known directory
+entries can be resolved during pathname traversal.
 
-At first glance, the result may appear counter-intuitive: although directory listing fails, `stat()` executes
-successfully, while one would expect that no access would be possible, as the read permission is missing.
+This design reflects a fundamental Unix principle:
 
-This behavior is intentional by design.
+> **Enumerating names and accessing known names are separate privileges.**
 
-In Unix, the Read permission (`r`) on a directory controls whether directory entries (names) can be enumerated. 
-The Execute permission (`x`) acts as **search/traversal permission** and determines whether already known directory entries
-can be resolved during pathname traversal.
-
-As a consequence, the absence of Read permission does **not** imply that files inside the directory are inaccessible.
+Test cases `/tmp/lab-03-s7-100/config.json` and `/tmp/lab-03-s5-300/config.json` demonstrate this important aspect of Unix
+directory semantics.
 
 If the filename is already known or can be guessed (e.g., `config.json`, `backup.zip`, `secret.txt`), traversal remains
 possible as long as Execute permission (`x`) is present on the directory.
@@ -306,10 +307,6 @@ This enables operations such as:
 
 provided the permissions of the referenced file allow the operation.
 
-This design reflects a fundamental Unix principle:
-
-> **Enumerating names and accessing known names are separate privileges.**
-
 Consequently, directory confidentiality and file confidentiality should be treated as separate security concerns.
 Preventing directory listing alone does not necessarily prevent access to files within the directory.
 
@@ -319,10 +316,6 @@ effective access barrier.
 
 Even if files inside the directory are globally readable, writable or executable, they remain inaccessible if pathname
 traversal fails due to missing Execute permission on the parent directory.
-
-This highlights an important Unix principle:
-
-> **File permissions alone do not determine accessibility — successful pathname traversal is required first.**
 
 Common permission pattern in practice are:
 - 711: Known entries are usable
@@ -361,10 +354,6 @@ config.json  create.json  rename_dst.json
 
 ```
 
-
-
-
-----
 
 ### Write Permission
 
