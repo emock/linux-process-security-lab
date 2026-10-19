@@ -42,7 +42,7 @@ elif file_group in process_groups:
   use group bits
 else:
   use others bits
-````
+````git
 `process_groups` includes both the primary group **and** all supplementary groups of the process.
 
 #### Example
